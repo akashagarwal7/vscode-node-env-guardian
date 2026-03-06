@@ -69,7 +69,7 @@ export class ProcessEnvUsageScanner implements vscode.Disposable {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Window,
-        title: 'EnvGuardian: scanning source files…',
+        title: 'Node Env Guardian: scanning source files…',
       },
       async () => {
         for (const glob of sourceGlobs) {

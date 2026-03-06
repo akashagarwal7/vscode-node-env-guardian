@@ -4,7 +4,7 @@ import { ProcessEnvUsageScanner } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { isEnvFilePath, debounce, getConfig } from './utils';
 
-const SOURCE_NAME = 'EnvGuardian';
+const SOURCE_NAME = 'Node Env Guardian';
 
 /**
  * Provides inline warning/info diagnostics for process.env.* references

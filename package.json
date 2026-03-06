@@ -1,16 +1,16 @@
 {
-  "name": "envguardian",
-  "displayName": "EnvGuardian",
-  "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused.",
+  "name": "vscode-node-env-guardian",
+  "displayName": "Node Env Guardian",
+  "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
   "version": "0.1.0",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
   },
-  "publisher": "envguardian",
+  "publisher": "Akash Agarwal",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/akashagarwal7/vscode-env-guardian.git"
+    "url": "git+ssh://git@github.com/akashagarwal7/vscode-node-env-guardian.git"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -20,6 +20,8 @@
     "Linters"
   ],
   "keywords": [
+    "node",
+    "nodejs",
     "env",
     "environment",
     "dotenv",
@@ -35,7 +37,7 @@
       "activitybar": [
         {
           "id": "envGuardian",
-          "title": "EnvGuardian",
+          "title": "Node Env Guardian",
           "icon": "resources/icon.svg"
         }
       ]
@@ -51,12 +53,12 @@
     "commands": [
       {
         "command": "envGuardian.refresh",
-        "title": "EnvGuardian: Refresh",
+        "title": "Node Env Guardian: Refresh",
         "icon": "$(refresh)"
       },
       {
         "command": "envGuardian.expandAll",
-        "title": "EnvGuardian: Expand All",
+        "title": "Node Env Guardian: Expand All",
         "icon": "$(expand-all)"
       },
       {
@@ -101,7 +103,7 @@
       ]
     },
     "configuration": {
-      "title": "EnvGuardian",
+      "title": "Node Env Guardian",
       "properties": {
         "envGuardian.sourceGlobs": {
           "type": "array",

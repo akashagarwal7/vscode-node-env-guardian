@@ -51,7 +51,7 @@ export function registerCommands(
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor || !isEnvFile(activeEditor.document.uri)) {
           vscode.window.showErrorMessage(
-            'EnvGuardian: No .env file is currently active. Focus a .env file first.'
+            'Node Env Guardian: No .env file is currently active. Focus a .env file first.'
           );
           return;
         }
@@ -101,7 +101,7 @@ export function registerCommands(
         const envFiles = envIndex.getFilePaths();
         if (envFiles.length === 0) {
           vscode.window.showWarningMessage(
-            'EnvGuardian: No .env files found in the workspace.'
+            'Node Env Guardian: No .env files found in the workspace.'
           );
           return;
         }
@@ -160,7 +160,7 @@ async function appendVarToFile(
     doc = await vscode.workspace.openTextDocument(uri);
   } catch {
     vscode.window.showErrorMessage(
-      `EnvGuardian: Could not open file ${uri.fsPath}`
+      `Node Env Guardian: Could not open file ${uri.fsPath}`
     );
     return;
   }
@@ -180,7 +180,7 @@ async function appendVarToFile(
     await doc.save();
   } else {
     vscode.window.showErrorMessage(
-      `EnvGuardian: Failed to write to ${path.basename(uri.fsPath)}`
+      `Node Env Guardian: Failed to write to ${path.basename(uri.fsPath)}`
     );
   }
 }

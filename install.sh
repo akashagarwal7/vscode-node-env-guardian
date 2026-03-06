@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# EnvGuardian — compile and install in Cursor
+# Node Env Guardian — compile and install in Cursor
 # Usage: ./install.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -12,7 +12,7 @@ EXT_NAME="envguardian"
 EXT_VERSION="$(node -p "require('./package.json').version")"
 VSIX_FILE="${EXT_NAME}-${EXT_VERSION}.vsix"
 
-echo "==> EnvGuardian installer"
+echo "==> Node Env Guardian installer"
 echo "    version : ${EXT_VERSION}"
 echo "    vsix    : ${VSIX_FILE}"
 echo ""
@@ -42,7 +42,7 @@ if command -v cursor &>/dev/null; then
   cursor --install-extension "${VSIX_FILE}"
   echo ""
   echo "✓ Installed via Cursor CLI."
-  echo "  Restart or reload Cursor to activate EnvGuardian."
+  echo "  Restart or reload Cursor to activate Node Env Guardian."
 
 # Fallback: copy directly into Cursor's extension directory
 else
@@ -85,7 +85,7 @@ else
 
   echo ""
   echo "✓ Installed to ${DEST}"
-  echo "  Restart or reload Cursor to activate EnvGuardian."
+  echo "  Restart or reload Cursor to activate Node Env Guardian."
 fi
 
 echo ""

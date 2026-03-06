@@ -1,8 +1,8 @@
-# EnvGuardian
+# Node Env Guardian
 
-> Eliminate runtime crashes caused by undefined environment variables.
+> Eliminate runtime crashes caused by undefined environment variables in Node.js projects.
 
-EnvGuardian is a VS Code extension for Node.js projects that scans all source files for `process.env.*` usages, tracks all `.env*` files, and surfaces missing variables so you catch problems at development time — not in production.
+Node Env Guardian is a VS Code extension for Node.js projects that scans all source files for `process.env.*` usages, tracks all `.env*` files, and surfaces missing variables so you catch problems at development time — not in production.
 
 ---
 
@@ -35,7 +35,7 @@ Right-click a warning squiggle and choose:
 
 | Command | Description |
 |---|---|
-| `EnvGuardian: Refresh` | Force-refresh the sidebar tree view |
+| `Node Env Guardian: Refresh` | Force-refresh the sidebar tree view |
 | `Copy Variable Name` | Copy the missing variable name to the clipboard |
 | `Add to .env File` | Append `VAR_NAME=` to the currently active `.env*` file |
 | `Go to Usage` | Navigate to the usage in source code (QuickPick if multiple) |
@@ -44,7 +44,7 @@ Right-click a warning squiggle and choose:
 
 ## How It Works
 
-**Scanning** — on activation, EnvGuardian scans all `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`, `.mts`, and `.cts` files for `process.env.*` references using regex matching (not a full AST parser, so it's fast). It skips `node_modules`, `dist`, `build`, `.next`, and `coverage`.
+**Scanning** — on activation, Node Env Guardian scans all `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`, `.mts`, and `.cts` files for `process.env.*` references using regex matching (not a full AST parser, so it's fast). It skips `node_modules`, `dist`, `build`, `.next`, and `coverage`.
 
 **Env file parsing** — all `.env*` files at the workspace root are parsed for `KEY=` definitions. The value is ignored; presence of the key is all that matters.
 
@@ -75,7 +75,7 @@ Right-click a warning squiggle and choose:
 
 ## Activation
 
-EnvGuardian activates automatically when a `package.json` is found in the workspace, indicating a Node.js project.
+Node Env Guardian activates automatically when a `package.json` is found in the workspace, indicating a Node.js project.
 
 ---
 
