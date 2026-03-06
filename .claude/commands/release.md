@@ -2,7 +2,7 @@ Run the full release pipeline for Node Env Guardian:
 
 1. Install dependencies (`npm install`)
 2. Compile TypeScript (`npm run compile`)
-3. Run unit tests (`npx mocha --require ./test/vscode-mock.js --ui tdd out/test/suite/*.test.js`)
+3. Run unit tests with coverage (`npm run test:coverage`). Open coverage report in browser.
 4. If tests pass, get the changes and bump the package version using semantic versioning. Also update tests if appropriate.
 5. Stage all changes, commit with appropriate commit message, and push to remote
 6. Publish to VS Code Marketplace using `./publish.sh`

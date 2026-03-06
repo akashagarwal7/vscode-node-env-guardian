@@ -10,6 +10,9 @@ out/
 # VS Code test runner downloads
 .vscode-test/
 
+# Coverage
+coverage/
+
 # macOS
 .DS_Store
 
