@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { ProcessEnvUsageScanner } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
-import { MissingVarsProvider, MissingVarItem, SectionHeaderItem } from './missingVarsProvider';
+import { MissingVarsProvider, MissingVarItem, SectionHeaderItem, EnvFileItem } from './missingVarsProvider';
 import { EnvDiagnosticsProvider } from './diagnostics';
 import { registerCommands } from './commands';
 
@@ -24,28 +24,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const treeView = vscode.window.createTreeView('envGuardian.missingVars', {
     treeDataProvider: missingVarsProvider,
     showCollapseAll: true,
+    dragAndDropController: missingVarsProvider,
   });
 
   // Update the tree view title
   missingVarsProvider.onDidChangeTreeData(() => {
-    const activeFile = missingVarsProvider!.getActiveEnvFileName();
     const roots = missingVarsProvider!.getChildren();
-    const totalCount = roots.reduce(
-      (sum, r) => sum + (r instanceof SectionHeaderItem ? r.items.length : 1),
-      0
-    );
-    const totalUsages = roots.reduce((sum, r) => {
-      if (r instanceof SectionHeaderItem) {
-        return sum + r.items.reduce((s, i) => s + ('usages' in i ? i.usages.length : 0), 0);
-      }
-      return sum + ('usages' in r ? r.usages.length : 0);
-    }, 0);
-    if (activeFile) {
-      treeView.title = totalCount > 0
-        ? `Environment Variables (${totalCount}) — Total usages: ${totalUsages} — ${activeFile}`
-        : `Environment Variables — ${activeFile}`;
+    const pinnedCount = missingVarsProvider!.getPinnedFiles().size;
+
+    if (missingVarsProvider!.isMultiFile) {
+      // Multi-file mode: show aggregate counts
+      const fileCount = roots.length;
+      treeView.title = `Environment Variables — ${fileCount} files`;
     } else {
-      treeView.title = 'Environment Variables';
+      const activeFile = missingVarsProvider!.getActiveEnvFileName();
+      let totalCount = 0;
+      let totalUsages = 0;
+      for (const r of roots) {
+        if (r instanceof SectionHeaderItem) {
+          totalCount += r.items.length;
+          totalUsages += r.items.reduce((s, i) => s + ('usages' in i ? i.usages.length : 0), 0);
+        }
+      }
+      if (activeFile) {
+        const pinLabel = pinnedCount > 0 ? ' 📌' : '';
+        treeView.title = totalCount > 0
+          ? `Environment Variables (${totalCount}) — Total usages: ${totalUsages} — ${activeFile}${pinLabel}`
+          : `Environment Variables — ${activeFile}${pinLabel}`;
+      } else {
+        treeView.title = 'Environment Variables';
+      }
     }
   });
 
@@ -56,16 +64,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const expandAllDisposable = vscode.commands.registerCommand('envGuardian.expandAll', async () => {
     const roots = missingVarsProvider!.getChildren();
     if (expandLevel === 0) {
-      // First press: expand section headers only
+      // First press: expand top-level items (EnvFileItems or SectionHeaders)
       for (const item of roots) {
-        if (item instanceof SectionHeaderItem || item instanceof MissingVarItem) {
+        if (item instanceof EnvFileItem || item instanceof SectionHeaderItem || item instanceof MissingVarItem) {
           await treeView.reveal(item, { expand: 1 });
         }
       }
-    } else {
-      // Second press: expand var items inside sections
+    } else if (expandLevel === 1) {
+      // Second press: expand sections inside EnvFileItems, or var items in sections
       for (const item of roots) {
-        if (item instanceof SectionHeaderItem) {
+        if (item instanceof EnvFileItem) {
+          for (const section of item.sections) {
+            await treeView.reveal(section, { expand: 1 });
+          }
+        } else if (item instanceof SectionHeaderItem) {
           for (const child of item.items) {
             await treeView.reveal(child, { expand: 1 });
           }
@@ -74,10 +86,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           await treeView.reveal(item, { expand: 1 });
         }
       }
+    } else {
+      // Third press (multi-file only): expand var items inside sections
+      for (const item of roots) {
+        if (item instanceof EnvFileItem) {
+          for (const section of item.sections) {
+            for (const child of section.items) {
+              await treeView.reveal(child, { expand: 1 });
+            }
+          }
+        }
+      }
     }
-    expandLevel = Math.min(expandLevel + 1, 2);
+    expandLevel = Math.min(expandLevel + 1, 3);
   });
-
 
   // Register expand-section command (inline button on section headers)
   const expandSectionDisposable = vscode.commands.registerCommand(
@@ -86,6 +108,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!item?.items) { return; }
       for (const child of item.items) {
         await treeView.reveal(child, { expand: 1 });
+      }
+    }
+  );
+
+  // Register pin/unpin/close commands
+  const pinFileDisposable = vscode.commands.registerCommand(
+    'envGuardian.pinFile',
+    () => { missingVarsProvider!.pinCurrentFile(); }
+  );
+
+  const unpinFileDisposable = vscode.commands.registerCommand(
+    'envGuardian.unpinFile',
+    (item: EnvFileItem) => {
+      if (item?.envFilePath) {
+        missingVarsProvider!.unpinFile(item.envFilePath);
+      }
+    }
+  );
+
+  const closeFileDisposable = vscode.commands.registerCommand(
+    'envGuardian.closeFile',
+    (item: EnvFileItem) => {
+      if (item?.envFilePath) {
+        missingVarsProvider!.unpinFile(item.envFilePath);
       }
     }
   );
@@ -102,12 +148,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       // Get only the truly missing var names (exclude commented-out)
       const roots = missingVarsProvider!.getChildren();
-      const missingSection = roots.find(
-        (i): i is SectionHeaderItem => i instanceof SectionHeaderItem && i.sectionId === 'missing'
-      );
-      const missingNames = missingSection
-        ? missingSection.items.map(i => i.variableName)
-        : [];
+      const missingNames: string[] = [];
+
+      for (const r of roots) {
+        if (r instanceof SectionHeaderItem && r.sectionId === 'missing') {
+          missingNames.push(...r.items.map(i => i.variableName));
+        }
+        if (r instanceof EnvFileItem && r.envFilePath === filePath) {
+          const missingSection = r.sections.find(s => s.sectionId === 'missing');
+          if (missingSection) {
+            missingNames.push(...missingSection.items.map(i => i.variableName));
+          }
+        }
+      }
 
       if (missingNames.length === 0) {
         vscode.window.showInformationMessage('No missing variables to add.');
@@ -184,6 +237,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeView,
     expandAllDisposable,
     expandSectionDisposable,
+    pinFileDisposable,
+    unpinFileDisposable,
+    closeFileDisposable,
     addAllMissingDisposable,
     toggleCommentedDisposable,
     codeActionDisposable,

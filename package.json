@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
@@ -92,6 +92,21 @@
         "icon": "$(expand-all)"
       },
       {
+        "command": "envGuardian.pinFile",
+        "title": "Node Env Guardian: Pin Current .env File",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "envGuardian.unpinFile",
+        "title": "Unpin",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "envGuardian.closeFile",
+        "title": "Close",
+        "icon": "$(close)"
+      },
+      {
         "command": "envGuardian.copyVarName",
         "title": "Copy Variable Name"
       },
@@ -136,12 +151,27 @@
           "group": "navigation@5"
         },
         {
-          "command": "envGuardian.expandAll",
+          "command": "envGuardian.pinFile",
           "when": "view == envGuardian.missingVars",
           "group": "navigation@6"
+        },
+        {
+          "command": "envGuardian.expandAll",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation@7"
         }
       ],
       "view/item/context": [
+        {
+          "command": "envGuardian.unpinFile",
+          "when": "viewItem == envFilePinned",
+          "group": "inline@1"
+        },
+        {
+          "command": "envGuardian.closeFile",
+          "when": "viewItem == envFileActive",
+          "group": "inline@1"
+        },
         {
           "command": "envGuardian.expandSection",
           "when": "viewItem == sectionHeader",

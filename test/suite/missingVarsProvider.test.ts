@@ -46,6 +46,7 @@ function buildProvider(
     }
     return new Set<string>();
   };
+  (envIndex as unknown as Record<string, unknown>).getCommentedVarsForFile = () => new Set<string>();
 
   return new MissingVarsProvider(scanner, envIndex);
 }
@@ -147,7 +148,7 @@ suite('MissingVarsProvider — tree structure', () => {
     const provider = buildProvider(['A', 'B', 'C'], [], envPath);
 
     const section = findSection(provider, 'missing')!;
-    assert.strictEqual(section.description, '3');
+    assert.strictEqual(section.description, '3 — Total usages: 6');
   });
 });
 

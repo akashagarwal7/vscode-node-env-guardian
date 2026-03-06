@@ -28,6 +28,17 @@ Each variable in the Missing, Commented Out, and Defined sections expands to sho
 - Each section header shows its variable count and total usages (e.g. "Missing Variables — 5 — Total usages: 18")
 - Refreshes automatically on file save or when you switch editors
 
+### Multi-File Tracking
+
+By default, the sidebar tracks the last focused `.env*` file. You can pin files to compare multiple environments simultaneously:
+
+- **Pin** (`$(pin)` in toolbar) — pins the current `.env*` file so it stays in the sidebar even when you switch editors
+- **Unpin** (`$(pinned)` inline button) — removes the pin from a file; shown on pinned file headers
+- **Close** (`$(close)` inline button) — removes an unpinned active file from the view
+- **Drag & drop** — drag `.env*` files from the Explorer into the sidebar to pin them
+
+When multiple files are tracked, each appears as a top-level collapsible node with its own set of sections (Missing, Commented Out, Defined, Unused). When only one unpinned file is active, sections are shown flat at the root level (original behavior).
+
 ### Switching Between Env Files
 
 The sidebar updates as you focus different `.env*` files, making it easy to compare coverage across environments (e.g. `.env.dev` might show 11 missing while `.env.local` shows only 1).
@@ -47,7 +58,8 @@ The sidebar title bar includes the following buttons (left to right):
 | Toggle Commented | `$(comment)` | Show or hide the "Commented Out Variables" section |
 | Encrypt Secrets | `$(lock)` | Encrypt the tracked `.env*` file using [dotenvx](https://dotenvx.com/) |
 | Decrypt Secrets | `$(unlock)` | Decrypt the tracked `.env*` file using dotenvx |
-| Expand All | `$(expand-all)` | Incrementally expand tree nodes — first press expands sections, second press expands individual variables |
+| Pin File | `$(pin)` | Pin the current `.env*` file to track it alongside other pinned files |
+| Expand All | `$(expand-all)` | Incrementally expand tree nodes — one level per press |
 | Collapse All | (built-in) | Collapse all expanded tree nodes |
 
 ### Encrypt & Decrypt with dotenvx
@@ -82,7 +94,10 @@ Right-click a warning squiggle and choose:
 | `Node Env Guardian: Toggle Commented Out Variables` | Show/hide the commented-out variables section |
 | `Node Env Guardian: Encrypt Secrets` | Encrypt the tracked `.env*` file with dotenvx |
 | `Node Env Guardian: Decrypt Secrets` | Decrypt the tracked `.env*` file with dotenvx |
+| `Node Env Guardian: Pin Current .env File` | Pin the current env file to the sidebar for multi-file tracking |
 | `Node Env Guardian: Generate Ignore File` | Create a `.node-env-guardian-ignore` file with default exclude patterns |
+| `Unpin` | Remove the pin from a tracked file (inline on pinned file headers) |
+| `Close` | Remove an unpinned active file from the view (inline on active file headers) |
 | `Copy Variable Name` | Copy the missing variable name to the clipboard (context menu) |
 | `Add to current .env file` | Append `VAR_NAME=` to the currently active `.env*` file (context menu) |
 | `Add to current .env file (commented out)` | Append `# VAR_NAME=` to the currently active `.env*` file (context menu) |
@@ -144,7 +159,7 @@ To run the full integration test suite, open the project in VS Code and press `F
 
 ---
 
-## Future Enhancements (v2+)
+## Future Enhancements
 
 - **IntelliSense completions** for `process.env.` based on defined variables
 - **Hover value preview** — see a variable's value from each env file on hover
