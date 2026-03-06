@@ -52,7 +52,18 @@ The sidebar title bar includes the following buttons (left to right):
 | Add All Missing | `$(add)` | Append all missing variables (excluding commented-out) as `VAR=` stubs to the tracked `.env*` file |
 | Toggle Commented | `$(comment)` | Show or hide the "Commented Out Variables" section |
 | Expand All | `$(expand-all)` | Expand all tree nodes to show usage locations |
+| Encrypt Secrets | `$(lock)` | Encrypt the tracked `.env*` file using [dotenvx](https://dotenvx.com/) |
+| Decrypt Secrets | `$(unlock)` | Decrypt the tracked `.env*` file using dotenvx |
 | Collapse All | (built-in) | Collapse all expanded tree nodes |
+
+### Encrypt & Decrypt with dotenvx
+
+The toolbar includes **lock** and **unlock** buttons for encrypting and decrypting the tracked `.env*` file using [dotenvx](https://dotenvx.com/).
+
+- **Encrypt** (`$(lock)`) — encrypts values in-place. The encryption key is saved to `~/.dotenvx-keys/<project>/<envfile>.key` by default (customizable via an input prompt). If dotenvx is not installed, you'll be offered to install it as a dev dependency.
+- **Decrypt** (`$(unlock)`) — decrypts values in-place using the key file. If the key is not found at the default path, you'll be prompted to provide the path.
+
+Keys are stored outside the workspace by default so they are not accidentally committed to version control.
 
 ### Inline Diagnostics (Squiggles)
 
@@ -75,6 +86,8 @@ Right-click a warning squiggle and choose:
 | `Node Env Guardian: Expand All` | Expand all tree nodes |
 | `Node Env Guardian: Add All Missing Variables to .env` | Bulk-add all missing variables to the tracked `.env*` file |
 | `Node Env Guardian: Toggle Commented Out Variables` | Show/hide the commented-out variables section |
+| `Node Env Guardian: Encrypt Secrets` | Encrypt the tracked `.env*` file with dotenvx |
+| `Node Env Guardian: Decrypt Secrets` | Decrypt the tracked `.env*` file with dotenvx |
 | `Copy Variable Name` | Copy the missing variable name to the clipboard (context menu) |
 | `Add to .env File` | Append `VAR_NAME=` to the currently active `.env*` file (context menu) |
 | `Go to Usage` | Navigate to the usage in source code — QuickPick if multiple (context menu) |

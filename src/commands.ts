@@ -1,9 +1,15 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { MissingVarItem, MissingVarsProvider } from './missingVarsProvider';
 import { ProcessEnvUsageScanner, EnvUsage } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { isEnvFile } from './utils';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * Register all EnvGuardian commands and return their disposables.
@@ -88,6 +94,102 @@ export function registerCommands(
     )
   );
 
+  // ── envGuardian.encryptSecrets ───────────────────────────────────────────────
+  disposables.push(
+    vscode.commands.registerCommand('envGuardian.encryptSecrets', async () => {
+      const filePath = provider.getActiveEnvFilePath();
+      if (!filePath) {
+        vscode.window.showErrorMessage('Node Env Guardian: No .env file is currently tracked.');
+        return;
+      }
+
+      if (isFileEncrypted(filePath)) {
+        const keyPath = getDefaultKeyPath(filePath);
+        vscode.window.showInformationMessage(
+          `Already encrypted. Key: ${keyPath}`
+        );
+        return;
+      }
+
+      if (!(await ensureDotenvx(filePath))) {
+        return;
+      }
+
+      const defaultKeyPath = getDefaultKeyPath(filePath);
+      const keyPath = await vscode.window.showInputBox({
+        prompt: 'Path to store the encryption key file',
+        value: defaultKeyPath,
+        ignoreFocusOut: true,
+      });
+      if (!keyPath) {
+        return;
+      }
+
+      const keyDir = path.dirname(keyPath);
+      await fs.promises.mkdir(keyDir, { recursive: true });
+
+      try {
+        const cwd = path.dirname(filePath);
+        await execFileAsync('npx', ['dotenvx', 'encrypt', '-f', filePath, '-fk', keyPath], { cwd });
+        vscode.window.showInformationMessage(
+          `Encrypted ${path.basename(filePath)}. Key: ${keyPath}`
+        );
+        provider.refresh();
+      } catch (err: any) {
+        vscode.window.showErrorMessage(
+          `Encryption failed: ${err.stderr || err.message}`
+        );
+      }
+    })
+  );
+
+  // ── envGuardian.decryptSecrets ───────────────────────────────────────────────
+  disposables.push(
+    vscode.commands.registerCommand('envGuardian.decryptSecrets', async () => {
+      const filePath = provider.getActiveEnvFilePath();
+      if (!filePath) {
+        vscode.window.showErrorMessage('Node Env Guardian: No .env file is currently tracked.');
+        return;
+      }
+
+      if (!isFileEncrypted(filePath)) {
+        vscode.window.showInformationMessage('File is not encrypted.');
+        return;
+      }
+
+      if (!(await ensureDotenvx(filePath))) {
+        return;
+      }
+
+      let keyPath = getDefaultKeyPath(filePath);
+      if (!fs.existsSync(keyPath)) {
+        const entered = await vscode.window.showInputBox({
+          prompt: `Key file not found at ${keyPath}. Enter path to key file:`,
+          ignoreFocusOut: true,
+        });
+        if (!entered) {
+          return;
+        }
+        keyPath = entered;
+        if (!fs.existsSync(keyPath)) {
+          vscode.window.showErrorMessage(`Key file not found: ${keyPath}`);
+          return;
+        }
+      }
+
+      try {
+        const cwd = path.dirname(filePath);
+        await execFileAsync('npx', ['dotenvx', 'decrypt', '-f', filePath, '-fk', keyPath], { cwd });
+        vscode.window.showInformationMessage(`Decrypted ${path.basename(filePath)}.`);
+        provider.refresh();
+      } catch (err: any) {
+        vscode.window.showErrorMessage(
+          `Decryption failed: ${err.stderr || err.message}`
+        );
+      }
+    })
+  );
+
   // ── envGuardian.addMissingVarFromDiag ─────────────────────────────────────────
   // Internal command triggered from Quick Fix code actions in diagnostics.ts
   disposables.push(
@@ -143,6 +245,71 @@ export function registerCommands(
   );
 
   return disposables;
+}
+
+// ── dotenvx Helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Check if a .env file contains encrypted values (lines with "encrypted:" prefix in values).
+ */
+function isFileEncrypted(filePath: string): boolean {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return content.split('\n').some(line => /^[^#=]+=\s*"?encrypted:/.test(line));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns the default key path: ~/.dotenvx-keys/<project-basename>/<env-filename>.key
+ */
+function getDefaultKeyPath(envFilePath: string): string {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const projectName = workspaceFolder ? path.basename(workspaceFolder) : 'unknown';
+  const envFileName = path.basename(envFilePath);
+  return path.join(os.homedir(), '.dotenvx-keys', projectName, `${envFileName}.key`);
+}
+
+/**
+ * Check if dotenvx is available; if not, offer to install it.
+ * Returns true if dotenvx is available (or was just installed).
+ */
+async function ensureDotenvx(envFilePath: string): Promise<boolean> {
+  try {
+    await execFileAsync('npx', ['dotenvx', '--version'], {
+      cwd: path.dirname(envFilePath),
+    });
+    return true;
+  } catch {
+    const choice = await vscode.window.showWarningMessage(
+      'dotenvx is not available. Install it as a dev dependency?',
+      'Install',
+      'Cancel'
+    );
+    if (choice !== 'Install') {
+      return false;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace folder found.');
+      return false;
+    }
+
+    try {
+      await execFileAsync('npm', ['install', '-D', '@dotenvx/dotenvx'], {
+        cwd: workspaceFolder,
+      });
+      vscode.window.showInformationMessage('Installed @dotenvx/dotenvx.');
+      return true;
+    } catch (err: any) {
+      vscode.window.showErrorMessage(
+        `Failed to install dotenvx: ${err.message}`
+      );
+      return false;
+    }
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

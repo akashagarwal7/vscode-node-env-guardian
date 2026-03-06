@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
@@ -73,6 +73,16 @@
         "icon": "$(comment)"
       },
       {
+        "command": "envGuardian.encryptSecrets",
+        "title": "Node Env Guardian: Encrypt Secrets",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "envGuardian.decryptSecrets",
+        "title": "Node Env Guardian: Decrypt Secrets",
+        "icon": "$(unlock)"
+      },
+      {
         "command": "envGuardian.copyVarName",
         "title": "Copy Variable Name"
       },
@@ -106,6 +116,16 @@
           "command": "envGuardian.expandAll",
           "when": "view == envGuardian.missingVars",
           "group": "navigation@4"
+        },
+        {
+          "command": "envGuardian.encryptSecrets",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation@5"
+        },
+        {
+          "command": "envGuardian.decryptSecrets",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation@6"
         }
       ],
       "view/item/context": [
@@ -171,6 +191,7 @@
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "^1.53.0",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.x",
