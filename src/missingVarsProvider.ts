@@ -19,7 +19,10 @@ export class SectionHeaderItem extends vscode.TreeItem {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = 'sectionHeader';
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.description = `${items.length}`;
+    const totalUsages = items.reduce((sum, i) => sum + ('usages' in i ? i.usages.length : 0), 0);
+    this.description = sectionId === 'unused'
+      ? `${items.length}`
+      : `${items.length} — Total usages: ${totalUsages}`;
   }
 }
 
@@ -132,6 +135,7 @@ export class MissingVarsProvider
   private disposables: vscode.Disposable[] = [];
   private lastEnvFilePath: string | undefined;
   private _showCommentedSection = true;
+  private cachedRoots: TreeNode[] | undefined;
 
   constructor(
     private readonly scanner: ProcessEnvUsageScanner,
@@ -177,6 +181,7 @@ export class MissingVarsProvider
   }
 
   refresh(): void {
+    this.cachedRoots = undefined;
     this._onDidChangeTreeData.fire();
   }
 
@@ -229,7 +234,11 @@ export class MissingVarsProvider
       return [];
     }
 
-    // Root level
+    // Root level — return cached items so tree view references stay stable
+    if (this.cachedRoots) {
+      return this.cachedRoots;
+    }
+
     const activeEditor = vscode.window.activeTextEditor;
     const activeFilePath =
       activeEditor && isEnvFile(activeEditor.document.uri)
@@ -299,6 +308,7 @@ export class MissingVarsProvider
       result.push(new SectionHeaderItem('unused', 'Unused Variables', unusedItems, 'question'));
     }
 
+    this.cachedRoots = result;
     return result;
   }
 

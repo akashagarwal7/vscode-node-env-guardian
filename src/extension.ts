@@ -34,23 +34,48 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       (sum, r) => sum + (r instanceof SectionHeaderItem ? r.items.length : 1),
       0
     );
+    const totalUsages = roots.reduce((sum, r) => {
+      if (r instanceof SectionHeaderItem) {
+        return sum + r.items.reduce((s, i) => s + ('usages' in i ? i.usages.length : 0), 0);
+      }
+      return sum + ('usages' in r ? r.usages.length : 0);
+    }, 0);
     if (activeFile) {
       treeView.title = totalCount > 0
-        ? `Environment Variables (${totalCount}) — ${activeFile}`
+        ? `Environment Variables (${totalCount}) — Total usages: ${totalUsages} — ${activeFile}`
         : `Environment Variables — ${activeFile}`;
     } else {
       treeView.title = 'Environment Variables';
     }
   });
 
-  // Register expand-all command
+  // Register expand-all command — expands one nesting level per press
+  let expandLevel = 0;
+  treeView.onDidCollapseElement(() => { expandLevel = 0; });
+  missingVarsProvider.onDidChangeTreeData(() => { expandLevel = 0; });
   const expandAllDisposable = vscode.commands.registerCommand('envGuardian.expandAll', async () => {
     const roots = missingVarsProvider!.getChildren();
-    for (const item of roots) {
-      if (item instanceof MissingVarItem || item instanceof SectionHeaderItem) {
-        await treeView.reveal(item, { expand: 3 });
+    if (expandLevel === 0) {
+      // First press: expand section headers only
+      for (const item of roots) {
+        if (item instanceof SectionHeaderItem || item instanceof MissingVarItem) {
+          await treeView.reveal(item, { expand: 1 });
+        }
+      }
+    } else {
+      // Second press: expand var items inside sections
+      for (const item of roots) {
+        if (item instanceof SectionHeaderItem) {
+          for (const child of item.items) {
+            await treeView.reveal(child, { expand: 1 });
+          }
+        }
+        if (item instanceof MissingVarItem) {
+          await treeView.reveal(item, { expand: 1 });
+        }
       }
     }
+    expandLevel = Math.min(expandLevel + 1, 2);
   });
 
 
