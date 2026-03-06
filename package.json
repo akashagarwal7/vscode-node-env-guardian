@@ -7,7 +7,7 @@
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
   },
-  "publisher": "Akash Agarwal",
+  "publisher": "akashagarwal",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/akashagarwal7/vscode-node-env-guardian.git"
@@ -77,12 +77,12 @@
     "menus": {
       "view/title": [
         {
-          "command": "envGuardian.refresh",
+          "command": "envGuardian.expandAll",
           "when": "view == envGuardian.missingVars",
           "group": "navigation"
         },
         {
-          "command": "envGuardian.expandAll",
+          "command": "envGuardian.refresh",
           "when": "view == envGuardian.missingVars",
           "group": "navigation"
         }

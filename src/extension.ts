@@ -47,6 +47,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+
   // 4. Initialise the diagnostics provider
   diagnosticsProvider = new EnvDiagnosticsProvider(scanner, envIndex);
 
