@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ProcessEnvUsageScanner } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
-import { MissingVarsProvider, MissingVarItem } from './missingVarsProvider';
+import { MissingVarsProvider, MissingVarItem, SectionHeaderItem } from './missingVarsProvider';
 import { EnvDiagnosticsProvider } from './diagnostics';
 import { registerCommands } from './commands';
 
@@ -28,10 +28,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Update the tree view title to show how many missing vars exist
   missingVarsProvider.onDidChangeTreeData(() => {
     const items = missingVarsProvider!.getChildren();
-    const count = items.length;
+    const count = items.filter(i => i instanceof MissingVarItem).length;
+    const commentedCount = items
+      .filter((i): i is SectionHeaderItem => i instanceof SectionHeaderItem)
+      .reduce((sum, s) => sum + s.items.length, 0);
+    const totalCount = count + commentedCount;
     const activeFile = missingVarsProvider!.getActiveEnvFileName();
-    if (activeFile && count > 0) {
-      treeView.title = `Missing Variables (${count})`;
+    if (activeFile && totalCount > 0) {
+      treeView.title = `Missing Variables (${totalCount}) in ${activeFile}`;
+    } else if (activeFile) {
+      treeView.title = `Missing Variables in ${activeFile}`;
     } else {
       treeView.title = 'Missing Variables';
     }
@@ -41,12 +47,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const expandAllDisposable = vscode.commands.registerCommand('envGuardian.expandAll', async () => {
     const roots = missingVarsProvider!.getChildren();
     for (const item of roots) {
-      if (item instanceof MissingVarItem) {
+      if (item instanceof MissingVarItem || item instanceof SectionHeaderItem) {
         await treeView.reveal(item, { expand: true });
+      }
+      if (item instanceof SectionHeaderItem) {
+        for (const child of item.items) {
+          await treeView.reveal(child, { expand: true });
+        }
       }
     }
   });
 
+
+  // Register toggle-commented-section command
+  const toggleCommentedDisposable = vscode.commands.registerCommand(
+    'envGuardian.toggleCommentedSection',
+    () => {
+      missingVarsProvider!.toggleCommentedSection();
+      vscode.commands.executeCommand(
+        'setContext',
+        'envGuardian.showCommentedSection',
+        missingVarsProvider!.showCommentedSection
+      );
+    }
+  );
+  // Set initial context (shown by default)
+  vscode.commands.executeCommand('setContext', 'envGuardian.showCommentedSection', true);
 
   // 4. Initialise the diagnostics provider
   diagnosticsProvider = new EnvDiagnosticsProvider(scanner, envIndex);
@@ -82,6 +108,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     diagnosticsProvider,
     treeView,
     expandAllDisposable,
+    toggleCommentedDisposable,
     codeActionDisposable,
     ...commandDisposables
   );

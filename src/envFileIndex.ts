@@ -12,6 +12,9 @@ export class EnvFileIndex implements vscode.Disposable {
   /** absolute file path → Set of defined variable names */
   private index: Map<string, Set<string>> = new Map();
 
+  /** absolute file path → Set of commented-out variable names */
+  private commentedIndex: Map<string, Set<string>> = new Map();
+
   private watcher: vscode.FileSystemWatcher | undefined;
   private disposables: vscode.Disposable[] = [];
 
@@ -63,6 +66,7 @@ export class EnvFileIndex implements vscode.Disposable {
 
     this.watcher.onDidDelete(uri => {
       this.index.delete(uri.fsPath);
+      this.commentedIndex.delete(uri.fsPath);
       this._onDidChange.fire();
     }, null, this.disposables);
   }
@@ -86,11 +90,15 @@ export class EnvFileIndex implements vscode.Disposable {
       content = Buffer.from(bytes).toString('utf8');
     } catch {
       this.index.delete(filePath);
+      this.commentedIndex.delete(filePath);
       return;
     }
 
     const vars = this.parseContent(content);
     this.index.set(filePath, vars);
+
+    const commentedVars = this.parseCommentedContent(content);
+    this.commentedIndex.set(filePath, commentedVars);
   }
 
   /** Pure parsing — exported for unit tests */
@@ -108,6 +116,22 @@ export class EnvFileIndex implements vscode.Disposable {
 
       // Match: VARIABLE_NAME= or VARIABLE_NAME =
       const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
+      if (match) {
+        vars.add(match[1]);
+      }
+    }
+
+    return vars;
+  }
+
+  /** Parse commented-out variable definitions (lines like `# VAR_NAME=...`) */
+  parseCommentedContent(content: string): Set<string> {
+    const vars = new Set<string>();
+    const lines = content.split('\n');
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      const match = /^#\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
       if (match) {
         vars.add(match[1]);
       }
@@ -135,6 +159,10 @@ export class EnvFileIndex implements vscode.Disposable {
 
   getVarsForFile(filePath: string): Set<string> {
     return this.index.get(filePath) ?? new Set();
+  }
+
+  getCommentedVarsForFile(filePath: string): Set<string> {
+    return this.commentedIndex.get(filePath) ?? new Set();
   }
 
   getAllFiles(): Map<string, Set<string>> {

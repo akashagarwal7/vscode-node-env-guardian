@@ -62,6 +62,11 @@
         "icon": "$(expand-all)"
       },
       {
+        "command": "envGuardian.toggleCommentedSection",
+        "title": "Node Env Guardian: Toggle Commented Out Variables",
+        "icon": "$(comment)"
+      },
+      {
         "command": "envGuardian.copyVarName",
         "title": "Copy Variable Name"
       },
@@ -77,14 +82,19 @@
     "menus": {
       "view/title": [
         {
-          "command": "envGuardian.expandAll",
-          "when": "view == envGuardian.missingVars",
-          "group": "navigation"
-        },
-        {
           "command": "envGuardian.refresh",
           "when": "view == envGuardian.missingVars",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "envGuardian.toggleCommentedSection",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation@2"
+        },
+        {
+          "command": "envGuardian.expandAll",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

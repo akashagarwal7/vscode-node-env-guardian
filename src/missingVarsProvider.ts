@@ -4,7 +4,34 @@ import { ProcessEnvUsageScanner, EnvUsage } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { isEnvFile, formatUsageLocation } from './utils';
 
-export type TreeNode = MissingVarItem | UsageLocationItem;
+export type TreeNode = MissingVarItem | UsageLocationItem | SectionHeaderItem | SeparatorItem;
+
+/**
+ * A visual separator in the tree view.
+ */
+export class SeparatorItem extends vscode.TreeItem {
+  constructor() {
+    super('─────────────', vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'separator';
+    this.description = '';
+  }
+}
+
+/**
+ * A collapsible section header in the tree view.
+ */
+export class SectionHeaderItem extends vscode.TreeItem {
+  constructor(
+    public readonly sectionId: string,
+    label: string,
+    public readonly items: MissingVarItem[]
+  ) {
+    super(label, vscode.TreeItemCollapsibleState.Collapsed);
+    this.contextValue = 'sectionHeader';
+    this.iconPath = new vscode.ThemeIcon('comment');
+    this.description = `${items.length}`;
+  }
+}
 
 /**
  * A tree item representing one missing environment variable (parent node).
@@ -60,11 +87,12 @@ export class UsageLocationItem extends vscode.TreeItem {
 }
 
 /**
- * TreeDataProvider for the EnvGuardian sidebar view.
+ * TreeDataProvider for the Node Env Guardian sidebar view.
  *
  * Displays all process.env variables used in source code that are NOT
  * defined in the currently active .env* file, with usage locations as
- * nested children.
+ * nested children. Variables that are commented out in the env file
+ * are shown in a separate collapsible section.
  */
 export class MissingVarsProvider
   implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable
@@ -74,6 +102,7 @@ export class MissingVarsProvider
 
   private disposables: vscode.Disposable[] = [];
   private lastEnvFilePath: string | undefined;
+  private _showCommentedSection = true;
 
   constructor(
     private readonly scanner: ProcessEnvUsageScanner,
@@ -109,6 +138,15 @@ export class MissingVarsProvider
     this.envIndex.onDidChange(() => this.refresh(), null, this.disposables);
   }
 
+  get showCommentedSection(): boolean {
+    return this._showCommentedSection;
+  }
+
+  toggleCommentedSection(): void {
+    this._showCommentedSection = !this._showCommentedSection;
+    this.refresh();
+  }
+
   refresh(): void {
     this._onDidChangeTreeData.fire();
   }
@@ -121,11 +159,27 @@ export class MissingVarsProvider
 
   getParent(element: TreeNode): TreeNode | undefined {
     if (element instanceof UsageLocationItem) {
-      // Find the parent MissingVarItem whose usages contain this usage
       const roots = this.getChildren();
-      return roots.find(
-        r => r instanceof MissingVarItem && r.usages.includes(element.usage)
-      );
+      for (const r of roots) {
+        if (r instanceof MissingVarItem && r.usages.includes(element.usage)) {
+          return r;
+        }
+        if (r instanceof SectionHeaderItem) {
+          const match = r.items.find(i => i.usages.includes(element.usage));
+          if (match) {
+            return match;
+          }
+        }
+      }
+    }
+    if (element instanceof MissingVarItem) {
+      // Check if this item belongs to a section
+      const roots = this.getChildren();
+      for (const r of roots) {
+        if (r instanceof SectionHeaderItem && r.items.includes(element)) {
+          return r;
+        }
+      }
     }
     return undefined;
   }
@@ -137,12 +191,17 @@ export class MissingVarsProvider
       return element.usages.map(u => new UsageLocationItem(u, workspaceRoot));
     }
 
+    // Section header: return its child MissingVarItems
+    if (element instanceof SectionHeaderItem) {
+      return element.items;
+    }
+
     // If called with a UsageLocationItem, no further children
     if (element) {
       return [];
     }
 
-    // Root level: return missing variable items
+    // Root level
     const activeEditor = vscode.window.activeTextEditor;
     const activeFilePath =
       activeEditor && isEnvFile(activeEditor.document.uri)
@@ -152,19 +211,43 @@ export class MissingVarsProvider
     if (!activeFilePath) {
       return [];
     }
+
     const definedVars = this.envIndex.getVarsForFile(activeFilePath);
+    const commentedVars = this.envIndex.getCommentedVarsForFile(activeFilePath);
     const allUsedVarNames = this.scanner.getAllVariableNames();
-
-    const missingVarNames = allUsedVarNames
-      .filter(v => !definedVars.has(v))
-      .sort();
-
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-    return missingVarNames.map(varName => {
+    const result: TreeNode[] = [];
+
+    // Truly missing vars: not defined AND not commented out
+    const missingVarNames = allUsedVarNames
+      .filter(v => !definedVars.has(v) && !commentedVars.has(v))
+      .sort();
+
+    for (const varName of missingVarNames) {
       const usages = this.scanner.getUsagesForVariable(varName);
-      return new MissingVarItem(varName, usages, workspaceRoot);
-    });
+      result.push(new MissingVarItem(varName, usages, workspaceRoot));
+    }
+
+    // Commented-out section: vars that are used in code and commented out in env file
+    if (this._showCommentedSection) {
+      const commentedMissing = allUsedVarNames
+        .filter(v => !definedVars.has(v) && commentedVars.has(v))
+        .sort();
+
+      if (commentedMissing.length > 0) {
+        const commentedItems = commentedMissing.map(varName => {
+          const usages = this.scanner.getUsagesForVariable(varName);
+          return new MissingVarItem(varName, usages, workspaceRoot);
+        });
+        if (missingVarNames.length > 0) {
+          result.push(new SeparatorItem());
+        }
+        result.push(new SectionHeaderItem('commented', 'Commented Out Variables', commentedItems));
+      }
+    }
+
+    return result;
   }
 
   /**
