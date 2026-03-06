@@ -48,12 +48,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const roots = missingVarsProvider!.getChildren();
     for (const item of roots) {
       if (item instanceof MissingVarItem || item instanceof SectionHeaderItem) {
-        await treeView.reveal(item, { expand: true });
-      }
-      if (item instanceof SectionHeaderItem) {
-        for (const child of item.items) {
-          await treeView.reveal(child, { expand: true });
-        }
+        await treeView.reveal(item, { expand: 3 });
       }
     }
   });
