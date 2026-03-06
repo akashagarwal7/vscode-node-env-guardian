@@ -49,17 +49,25 @@ export class MissingVarsProvider
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private disposables: vscode.Disposable[] = [];
+  private lastEnvFilePath: string | undefined;
 
   constructor(
     private readonly scanner: ProcessEnvUsageScanner,
     private readonly envIndex: EnvFileIndex
   ) {
-    // Refresh when active editor changes to a .env* file
+    // Seed from the current editor if it's already an env file
+    const current = vscode.window.activeTextEditor;
+    if (current && isEnvFile(current.document.uri)) {
+      this.lastEnvFilePath = current.document.uri.fsPath;
+    }
+
+    // Refresh when active editor changes; track last env file
     vscode.window.onDidChangeActiveTextEditor(
       editor => {
-        if (!editor || isEnvFile(editor.document.uri)) {
-          this.refresh();
+        if (editor && isEnvFile(editor.document.uri)) {
+          this.lastEnvFilePath = editor.document.uri.fsPath;
         }
+        this.refresh();
       },
       null,
       this.disposables
@@ -89,11 +97,14 @@ export class MissingVarsProvider
 
   getChildren(): MissingVarItem[] {
     const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor || !isEnvFile(activeEditor.document.uri)) {
+    const activeFilePath =
+      activeEditor && isEnvFile(activeEditor.document.uri)
+        ? activeEditor.document.uri.fsPath
+        : this.lastEnvFilePath;
+
+    if (!activeFilePath) {
       return [];
     }
-
-    const activeFilePath = activeEditor.document.uri.fsPath;
     const definedVars = this.envIndex.getVarsForFile(activeFilePath);
     const allUsedVarNames = this.scanner.getAllVariableNames();
 
@@ -111,16 +122,19 @@ export class MissingVarsProvider
   }
 
   /**
-   * Returns the welcome message items when no .env* file is focused.
-   * VSCode shows "welcome content" automatically via contributes.viewsWelcome,
-   * but we also handle it here for clarity.
+   * Returns the basename of the currently tracked .env* file.
+   * Prefers the active editor if it's an env file, otherwise falls back
+   * to the last focused env file.
    */
   getActiveEnvFileName(): string | undefined {
     const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor || !isEnvFile(activeEditor.document.uri)) {
-      return undefined;
+    if (activeEditor && isEnvFile(activeEditor.document.uri)) {
+      return path.basename(activeEditor.document.uri.fsPath);
     }
-    return path.basename(activeEditor.document.uri.fsPath);
+    if (this.lastEnvFilePath) {
+      return path.basename(this.lastEnvFilePath);
+    }
+    return undefined;
   }
 
   dispose(): void {

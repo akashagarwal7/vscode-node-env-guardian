@@ -15,6 +15,7 @@ Open any `.env*` file to see a list of every `process.env` variable referenced i
 - Flat list sorted alphabetically
 - Each item shows the first usage location (`src/api/client.ts:14`) and a count of additional usages
 - Hover for the full list of all file:line references
+- Persists across editor switches — the last focused `.env*` file stays tracked when you navigate to non-env files
 - Refreshes automatically on file save or when you switch editors
 
 ### Inline Diagnostics (Squiggles)
