@@ -4,18 +4,7 @@ import { ProcessEnvUsageScanner, EnvUsage } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { isEnvFile, formatUsageLocation } from './utils';
 
-export type TreeNode = MissingVarItem | DefinedVarItem | UsageLocationItem | SectionHeaderItem | SeparatorItem;
-
-/**
- * A visual separator in the tree view.
- */
-export class SeparatorItem extends vscode.TreeItem {
-  constructor() {
-    super('─────────────', vscode.TreeItemCollapsibleState.None);
-    this.contextValue = 'separator';
-    this.description = '';
-  }
-}
+export type TreeNode = MissingVarItem | DefinedVarItem | UnusedVarItem | UsageLocationItem | SectionHeaderItem;
 
 /**
  * A collapsible section header in the tree view.
@@ -24,7 +13,7 @@ export class SectionHeaderItem extends vscode.TreeItem {
   constructor(
     public readonly sectionId: string,
     label: string,
-    public readonly items: (MissingVarItem | DefinedVarItem)[],
+    public readonly items: (MissingVarItem | DefinedVarItem | UnusedVarItem)[],
     icon: string = 'comment'
   ) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
@@ -81,6 +70,20 @@ export class DefinedVarItem extends vscode.TreeItem {
     this.tooltip = usages.length > 0
       ? usages.map(u => formatUsageLocation(u.filePath, u.line, workspaceRoot)).join('\n')
       : variableName;
+  }
+}
+
+/**
+ * A tree item representing a variable defined in the env file but not used in code.
+ */
+export class UnusedVarItem extends vscode.TreeItem {
+  constructor(
+    public readonly variableName: string
+  ) {
+    super(variableName, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'unusedEnvVar';
+    this.iconPath = new vscode.ThemeIcon('question');
+    this.tooltip = `${variableName} is defined but not referenced in any source file`;
   }
 }
 
@@ -191,7 +194,7 @@ export class MissingVarsProvider
           return r;
         }
         if (r instanceof SectionHeaderItem) {
-          const match = r.items.find(i => i.usages.includes(element.usage));
+          const match = r.items.find(i => 'usages' in i && i.usages.includes(element.usage));
           if (match) {
             return match;
           }
@@ -244,14 +247,17 @@ export class MissingVarsProvider
 
     const result: TreeNode[] = [];
 
-    // Truly missing vars: not defined AND not commented out
+    // Missing vars section: not defined AND not commented out
     const missingVarNames = allUsedVarNames
       .filter(v => !definedVars.has(v) && !commentedVars.has(v))
       .sort();
 
-    for (const varName of missingVarNames) {
-      const usages = this.scanner.getUsagesForVariable(varName);
-      result.push(new MissingVarItem(varName, usages, workspaceRoot));
+    if (missingVarNames.length > 0) {
+      const missingItems = missingVarNames.map(varName => {
+        const usages = this.scanner.getUsagesForVariable(varName);
+        return new MissingVarItem(varName, usages, workspaceRoot);
+      });
+      result.push(new SectionHeaderItem('missing', 'Missing Variables', missingItems, 'warning'));
     }
 
     // Commented-out section: vars that are used in code and commented out in env file
@@ -265,10 +271,7 @@ export class MissingVarsProvider
           const usages = this.scanner.getUsagesForVariable(varName);
           return new MissingVarItem(varName, usages, workspaceRoot);
         });
-        if (missingVarNames.length > 0) {
-          result.push(new SeparatorItem());
-        }
-        result.push(new SectionHeaderItem('commented', 'Commented Out Variables', commentedItems));
+        result.push(new SectionHeaderItem('commented', 'Commented Out Variables', commentedItems, 'comment'));
       }
     }
 
@@ -282,10 +285,18 @@ export class MissingVarsProvider
         const usages = this.scanner.getUsagesForVariable(varName);
         return new DefinedVarItem(varName, usages, workspaceRoot);
       });
-      if (result.length > 0) {
-        result.push(new SeparatorItem());
-      }
       result.push(new SectionHeaderItem('defined', 'Defined Variables', definedItems, 'pass'));
+    }
+
+    // Unused variables section: defined in env file but not used in any source file
+    const allUsedSet = new Set(allUsedVarNames);
+    const unusedVarNames = [...definedVars]
+      .filter(v => !allUsedSet.has(v))
+      .sort();
+
+    if (unusedVarNames.length > 0) {
+      const unusedItems = unusedVarNames.map(varName => new UnusedVarItem(varName));
+      result.push(new SectionHeaderItem('unused', 'Unused Variables', unusedItems, 'question'));
     }
 
     return result;

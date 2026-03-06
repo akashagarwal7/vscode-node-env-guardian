@@ -1,28 +1,46 @@
 # Node Env Guardian
 
-> **Disclaimer:** This extension was vibe-coded. Use with caution.
-
-> Eliminate runtime crashes caused by undefined environment variables in Node.js projects.
+> **Disclaimer:** This extension was entirely vibe-coded with Claude Opus 4.6 on an extremely drowsy day out of frustration. Tread with caution.
 
 Node Env Guardian is a VS Code extension for Node.js projects that scans all source files for `process.env.*` usages, tracks all `.env*` files, and surfaces missing variables so you catch problems at development time — not in production.
+
+![All four sections in the sidebar for .env.local](doc/env-local.png)
 
 ---
 
 ## Features
 
-### Sidebar: Missing Variables Panel
+### Sidebar: Environment Variables Panel
 
-Open any `.env*` file to see a hierarchical tree of every `process.env` variable referenced in your source code that is **not** defined in that file.
+Open any `.env*` file to see a sidebar with four categorized sections:
 
-- **Two-level tree** — each missing variable expands to show all source file locations where it's used
-- Click any usage location to jump directly to that line in the source file
+| Section | Icon | Description |
+|---|---|---|
+| **Missing Variables** | Warning | Variables used in code but not defined in the env file |
+| **Commented Out Variables** | Comment | Variables commented out in the env file (e.g. `# API_KEY=value`) |
+| **Defined Variables** | Check | Variables that are both defined and used |
+| **Unused Variables** | Question | Variables defined in the env file but never referenced in code |
+
+Each variable in the Missing, Commented Out, and Defined sections expands to show all source file locations where it's used. Click any location to jump directly to that line.
+
+![Expanded missing variables with source locations for .env.production](doc/main.png)
+
 - Persists across editor switches — the last focused `.env*` file stays tracked when you navigate to non-env files
-- The panel title shows the count and tracked file name (e.g. "Missing Variables (10) in .env.local")
+- The panel title shows the total count and tracked file name (e.g. "Environment Variables (46) — .env.dev")
 - Refreshes automatically on file save or when you switch editors
+
+### Switching Between Env Files
+
+The sidebar updates as you focus different `.env*` files, making it easy to compare coverage across environments:
+
+| | | |
+|---|---|---|
+| ![.env.dev](doc/env-dev.png) | ![.env.test](doc/env-test.png) | ![.env.local](doc/env-local.png) |
+| `.env.dev` — 11 missing | `.env.test` — 0 missing | `.env.local` — 1 missing |
 
 ### Commented Out Variables Section
 
-Variables that are commented out in your `.env*` file (e.g. `# API_KEY=value`) are shown in a separate **"Commented Out Variables"** section at the bottom of the sidebar, visually separated from truly missing variables. This section can be toggled on/off with the comment button in the toolbar.
+Variables that are commented out in your `.env*` file (e.g. `# API_KEY=value`) are shown in a separate **"Commented Out Variables"** section, visually separated from truly missing variables. This section can be toggled on/off with the comment button in the toolbar.
 
 ### Sidebar Toolbar
 

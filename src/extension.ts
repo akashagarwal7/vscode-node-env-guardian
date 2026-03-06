@@ -26,21 +26,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showCollapseAll: true,
   });
 
-  // Update the tree view title to show how many missing vars exist
+  // Update the tree view title
   missingVarsProvider.onDidChangeTreeData(() => {
-    const items = missingVarsProvider!.getChildren();
-    const count = items.filter(i => i instanceof MissingVarItem).length;
-    const commentedCount = items
-      .filter((i): i is SectionHeaderItem => i instanceof SectionHeaderItem)
-      .reduce((sum, s) => sum + s.items.length, 0);
-    const totalCount = count + commentedCount;
     const activeFile = missingVarsProvider!.getActiveEnvFileName();
-    if (activeFile && totalCount > 0) {
-      treeView.title = `Missing Variables (${totalCount}) in ${activeFile}`;
-    } else if (activeFile) {
-      treeView.title = `Missing Variables in ${activeFile}`;
+    const roots = missingVarsProvider!.getChildren();
+    const totalCount = roots.reduce(
+      (sum, r) => sum + (r instanceof SectionHeaderItem ? r.items.length : 1),
+      0
+    );
+    if (activeFile) {
+      treeView.title = totalCount > 0
+        ? `Environment Variables (${totalCount}) — ${activeFile}`
+        : `Environment Variables — ${activeFile}`;
     } else {
-      treeView.title = 'Missing Variables';
+      treeView.title = 'Environment Variables';
     }
   });
 
