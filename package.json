@@ -193,7 +193,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && tsc -p test/",
     "test": "node ./out/test/runTest.js",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.53.0",
