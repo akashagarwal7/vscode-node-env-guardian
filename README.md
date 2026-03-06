@@ -2,6 +2,8 @@
 
 > **Disclaimer:** This extension was entirely vibe-coded with Claude Opus 4.6 on an extremely drowsy day out of frustration. Tread with caution.
 
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/akashagarwal.vscode-node-env-guardian)](https://marketplace.visualstudio.com/items?itemName=akashagarwal.vscode-node-env-guardian)
+
 Node Env Guardian is a VS Code extension for Node.js projects that scans all source files for `process.env.*` usages, tracks all `.env*` files, and surfaces missing variables so you catch problems at development time — not in production.
 
 ---
