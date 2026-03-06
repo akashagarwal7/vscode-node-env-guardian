@@ -79,6 +79,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
 
+  // Register expand-section command (inline button on section headers)
+  const expandSectionDisposable = vscode.commands.registerCommand(
+    'envGuardian.expandSection',
+    async (item: SectionHeaderItem) => {
+      if (!item?.items) { return; }
+      for (const child of item.items) {
+        await treeView.reveal(child, { expand: 1 });
+      }
+    }
+  );
+
   // Register add-all-missing command
   const addAllMissingDisposable = vscode.commands.registerCommand(
     'envGuardian.addAllMissing',
@@ -172,6 +183,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     diagnosticsProvider,
     treeView,
     expandAllDisposable,
+    expandSectionDisposable,
     addAllMissingDisposable,
     toggleCommentedDisposable,
     codeActionDisposable,

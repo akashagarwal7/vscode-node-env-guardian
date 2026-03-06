@@ -19,7 +19,7 @@ Open any `.env*` file to see a sidebar with four categorized sections:
 | **Defined Variables** | Check | Variables that are both defined and used |
 | **Unused Variables** | Question | Variables defined in the env file but never referenced in code |
 
-Each variable in the Missing, Commented Out, and Defined sections expands to show all source file locations where it's used. Click any location to jump directly to that line.
+Each variable in the Missing, Commented Out, and Defined sections expands to show all source file locations where it's used. Click any location to jump directly to that line. Each section header has an inline expand button to expand all items within that section.
 
 ![Expanded missing variables with source locations for .env.production](doc/main.png)
 
@@ -84,7 +84,8 @@ Right-click a warning squiggle and choose:
 | `Node Env Guardian: Decrypt Secrets` | Decrypt the tracked `.env*` file with dotenvx |
 | `Node Env Guardian: Generate Ignore File` | Create a `.node-env-guardian-ignore` file with default exclude patterns |
 | `Copy Variable Name` | Copy the missing variable name to the clipboard (context menu) |
-| `Add to .env File` | Append `VAR_NAME=` to the currently active `.env*` file (context menu) |
+| `Add to current .env file` | Append `VAR_NAME=` to the currently active `.env*` file (context menu) |
+| `Add to current .env file (commented out)` | Append `# VAR_NAME=` to the currently active `.env*` file (context menu) |
 | `Go to Usage` | Navigate to the usage in source code — QuickPick if multiple (context menu) |
 
 ---

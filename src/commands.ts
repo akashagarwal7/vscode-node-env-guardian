@@ -68,6 +68,28 @@ export function registerCommands(
     )
   );
 
+  // ── envGuardian.addToEnvFileCommented ─────────────────────────────────────────
+  disposables.push(
+    vscode.commands.registerCommand(
+      'envGuardian.addToEnvFileCommented',
+      async (item: MissingVarItem) => {
+        if (!item?.variableName) {
+          return;
+        }
+
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor || !isEnvFile(activeEditor.document.uri)) {
+          vscode.window.showErrorMessage(
+            'Node Env Guardian: No .env file is currently active. Focus a .env file first.'
+          );
+          return;
+        }
+
+        await appendVarToFile(item.variableName, activeEditor.document.uri, true);
+      }
+    )
+  );
+
   // ── envGuardian.goToUsage ─────────────────────────────────────────────────────
   disposables.push(
     vscode.commands.registerCommand(
@@ -357,7 +379,8 @@ async function ensureDotenvx(envFilePath: string): Promise<boolean> {
  */
 async function appendVarToFile(
   varName: string,
-  uri: vscode.Uri
+  uri: vscode.Uri,
+  commented: boolean = false
 ): Promise<void> {
   let doc: vscode.TextDocument;
   try {
@@ -375,7 +398,8 @@ async function appendVarToFile(
   // If the file doesn't end with a newline, prepend one
   const text = doc.getText();
   const prefix = text.length > 0 && !text.endsWith('\n') ? '\n' : '';
-  const insertion = `${prefix}${varName}=\n`;
+  const line = commented ? `# ${varName}=` : `${varName}=`;
+  const insertion = `${prefix}${line}\n`;
 
   edit.insert(uri, lastLine.range.end, insertion);
 

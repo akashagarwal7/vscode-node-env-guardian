@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "0.8.1",
+  "version": "0.10.0",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
@@ -87,12 +87,21 @@
         "title": "Node Env Guardian: Generate Ignore File"
       },
       {
+        "command": "envGuardian.expandSection",
+        "title": "Expand Section",
+        "icon": "$(expand-all)"
+      },
+      {
         "command": "envGuardian.copyVarName",
         "title": "Copy Variable Name"
       },
       {
         "command": "envGuardian.addToEnvFile",
         "title": "Add to current .env file"
+      },
+      {
+        "command": "envGuardian.addToEnvFileCommented",
+        "title": "Add to current .env file (commented out)"
       },
       {
         "command": "envGuardian.goToUsage",
@@ -134,11 +143,20 @@
       ],
       "view/item/context": [
         {
+          "command": "envGuardian.expandSection",
+          "when": "viewItem == sectionHeader",
+          "group": "inline"
+        },
+        {
           "command": "envGuardian.copyVarName",
           "when": "viewItem == missingEnvVar"
         },
         {
           "command": "envGuardian.addToEnvFile",
+          "when": "viewItem == missingEnvVar"
+        },
+        {
+          "command": "envGuardian.addToEnvFileCommented",
           "when": "viewItem == missingEnvVar"
         },
         {
