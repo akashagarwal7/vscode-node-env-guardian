@@ -21,7 +21,7 @@ Open any `.env*` file to see a sidebar with four categorized sections:
 
 Each variable in the Missing, Commented Out, and Defined sections expands to show all source file locations where it's used. Click any location to jump directly to that line. Each section header has an inline expand button to expand all items within that section.
 
-![Expanded missing variables with source locations for .env.production](doc/main.png)
+![Main demo — sidebar sections, switching env files, expanding usages](doc/node-env-guardian-main-demo.gif)
 
 - Persists across editor switches — the last focused `.env*` file stays tracked when you navigate to non-env files
 - The panel title shows the total variable count, total usages across all files, and the tracked file name (e.g. "Environment Variables (46) — Total usages: 120 — .env.dev")
@@ -111,7 +111,9 @@ Right-click a warning squiggle and choose:
 
 **Custom ignore file** — if a `.node-env-guardian-ignore` file exists at the workspace root, its glob patterns are used *instead of* the default exclude list and the `envGuardian.excludeGlobs` setting. One pattern per line; blank lines and lines starting with `#` are ignored. Run the command `Node Env Guardian: Generate Ignore File` to create one pre-populated with the defaults.
 
-**Env file parsing** — all `.env*` files at the workspace root are parsed for `KEY=` definitions and `# KEY=` commented-out definitions. The value is ignored; presence of the key is all that matters.
+![Generating and editing the .node-env-guardian-ignore file](doc/node-env-guardian-ignore-file.gif)
+
+**Env file parsing** — all `.env*` files at the workspace root are automatically parsed for `KEY=` definitions and `# KEY=` commented-out definitions. Any `.env*` file you open or pin is also tracked, even if it's in a subdirectory. The value is ignored; presence of the key is all that matters.
 
 **Comparison** — the sidebar and diagnostics compare the set of *used* variables against the set of *defined* variables to find the gap. Commented-out variables are tracked separately and displayed in their own section.
 
@@ -133,7 +135,7 @@ Right-click a warning squiggle and choose:
 
 - **Dynamic access is not tracked.** `process.env[dynamicVar]` is intentionally ignored — only statically analyzable string keys are indexed.
 - **Comments are scanned.** A `// process.env.FOO` in a comment will be tracked. This is intentional as commented-out references are still a useful signal.
-- **Only workspace-root `.env*` files** are tracked. Nested env files in subdirectories are ignored.
+- **Auto-discovery is workspace-root only.** `.env*` files in subdirectories are not auto-discovered, but are tracked when you open or pin them.
 - **Multi-root workspaces** are supported; each folder is scanned independently.
 
 ---

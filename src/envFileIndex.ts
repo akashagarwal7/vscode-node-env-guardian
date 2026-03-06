@@ -15,6 +15,9 @@ export class EnvFileIndex implements vscode.Disposable {
   /** absolute file path → Set of commented-out variable names */
   private commentedIndex: Map<string, Set<string>> = new Map();
 
+  /** absolute file path → Map of variable name → 0-indexed line number */
+  private lineIndex: Map<string, Map<string, number>> = new Map();
+
   private watcher: vscode.FileSystemWatcher | undefined;
   private disposables: vscode.Disposable[] = [];
 
@@ -37,6 +40,7 @@ export class EnvFileIndex implements vscode.Disposable {
   async reParse(): Promise<void> {
     this.index.clear();
     this.commentedIndex.clear();
+    this.lineIndex.clear();
 
     const pattern = getConfig<string>('envFilePattern', DEFAULT_ENV_PATTERN);
     const uris = await vscode.workspace.findFiles(pattern);
@@ -70,14 +74,16 @@ export class EnvFileIndex implements vscode.Disposable {
     this.watcher.onDidDelete(uri => {
       this.index.delete(uri.fsPath);
       this.commentedIndex.delete(uri.fsPath);
+      this.lineIndex.delete(uri.fsPath);
       this._onDidChange.fire();
     }, null, this.disposables);
   }
 
   private setupDocumentChangeListener(): void {
     const debouncedParse = debounce((filePath: string, content: string) => {
-      const vars = this.parseContent(content);
+      const { vars, lines } = this.parseContentWithLines(content);
       this.index.set(filePath, vars);
+      this.lineIndex.set(filePath, lines);
       const commentedVars = this.parseCommentedContent(content);
       this.commentedIndex.set(filePath, commentedVars);
       this._onDidChange.fire();
@@ -103,11 +109,13 @@ export class EnvFileIndex implements vscode.Disposable {
     } catch {
       this.index.delete(filePath);
       this.commentedIndex.delete(filePath);
+      this.lineIndex.delete(filePath);
       return;
     }
 
-    const vars = this.parseContent(content);
+    const { vars, lines } = this.parseContentWithLines(content);
     this.index.set(filePath, vars);
+    this.lineIndex.set(filePath, lines);
 
     const commentedVars = this.parseCommentedContent(content);
     this.commentedIndex.set(filePath, commentedVars);
@@ -115,11 +123,17 @@ export class EnvFileIndex implements vscode.Disposable {
 
   /** Pure parsing — exported for unit tests */
   parseContent(content: string): Set<string> {
-    const vars = new Set<string>();
-    const lines = content.split('\n');
+    return this.parseContentWithLines(content).vars;
+  }
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
+  /** Parse content returning both variable names and their line numbers */
+  private parseContentWithLines(content: string): { vars: Set<string>; lines: Map<string, number> } {
+    const vars = new Set<string>();
+    const lines = new Map<string, number>();
+    const contentLines = content.split('\n');
+
+    for (let i = 0; i < contentLines.length; i++) {
+      const line = contentLines[i].trim();
 
       // Skip blank lines and comments
       if (!line || line.startsWith('#')) {
@@ -130,10 +144,13 @@ export class EnvFileIndex implements vscode.Disposable {
       const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
       if (match) {
         vars.add(match[1]);
+        if (!lines.has(match[1])) {
+          lines.set(match[1], i);
+        }
       }
     }
 
-    return vars;
+    return { vars, lines };
   }
 
   /** Parse commented-out variable definitions (lines like `# VAR_NAME=...`) */
@@ -169,6 +186,14 @@ export class EnvFileIndex implements vscode.Disposable {
 
   // ── Query API ────────────────────────────────────────────────────────────────
 
+  /** Ensure a file is tracked, parsing it if not already in the index */
+  async ensureTracked(filePath: string): Promise<void> {
+    if (!this.index.has(filePath)) {
+      await this.parseFile(filePath);
+      this._onDidChange.fire();
+    }
+  }
+
   getVarsForFile(filePath: string): Set<string> {
     return this.index.get(filePath) ?? new Set();
   }
@@ -187,6 +212,11 @@ export class EnvFileIndex implements vscode.Disposable {
 
   hasFile(filePath: string): boolean {
     return this.index.has(filePath);
+  }
+
+  /** Returns the 0-indexed line number of a variable in the given file, or undefined */
+  getVarLine(filePath: string, varName: string): number | undefined {
+    return this.lineIndex.get(filePath)?.get(varName);
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────

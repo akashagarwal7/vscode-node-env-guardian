@@ -105,12 +105,25 @@ export class DefinedVarItem extends vscode.TreeItem {
  */
 export class UnusedVarItem extends vscode.TreeItem {
   constructor(
-    public readonly variableName: string
+    public readonly variableName: string,
+    public readonly envFilePath?: string,
+    line?: number
   ) {
     super(variableName, vscode.TreeItemCollapsibleState.None);
     this.contextValue = 'unusedEnvVar';
     this.iconPath = new vscode.ThemeIcon('question');
     this.tooltip = `${variableName} is defined but not referenced in any source file`;
+
+    if (envFilePath && line !== undefined) {
+      this.command = {
+        command: 'vscode.open',
+        title: 'Go to Definition',
+        arguments: [
+          vscode.Uri.file(envFilePath),
+          { selection: new vscode.Range(line, 0, line, 0) },
+        ],
+      };
+    }
   }
 }
 
@@ -175,13 +188,15 @@ export class MissingVarsProvider
     const current = vscode.window.activeTextEditor;
     if (current && isEnvFile(current.document.uri)) {
       this.lastEnvFilePath = current.document.uri.fsPath;
+      this.envIndex.ensureTracked(current.document.uri.fsPath);
     }
 
     // Refresh when active editor changes; track last env file
     vscode.window.onDidChangeActiveTextEditor(
-      editor => {
+      async editor => {
         if (editor && isEnvFile(editor.document.uri)) {
           this.lastEnvFilePath = editor.document.uri.fsPath;
+          await this.envIndex.ensureTracked(editor.document.uri.fsPath);
         }
         this.refresh();
       },
@@ -205,6 +220,7 @@ export class MissingVarsProvider
 
   pinFile(filePath: string): void {
     this.pinnedFiles.add(filePath);
+    this.envIndex.ensureTracked(filePath);
     this.refresh();
   }
 
@@ -448,7 +464,9 @@ export class MissingVarsProvider
       .sort();
 
     if (unusedVarNames.length > 0) {
-      const unusedItems = unusedVarNames.map(varName => new UnusedVarItem(varName));
+      const unusedItems = unusedVarNames.map(varName =>
+        new UnusedVarItem(varName, filePath, this.envIndex.getVarLine(filePath, varName))
+      );
       result.push(new SectionHeaderItem('unused', 'Unused Variables', unusedItems, 'question'));
     }
 
