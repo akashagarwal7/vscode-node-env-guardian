@@ -1,5 +1,7 @@
 # Node Env Guardian
 
+> **Disclaimer:** This extension was vibe-coded. Use with caution.
+
 > Eliminate runtime crashes caused by undefined environment variables in Node.js projects.
 
 Node Env Guardian is a VS Code extension for Node.js projects that scans all source files for `process.env.*` usages, tracks all `.env*` files, and surfaces missing variables so you catch problems at development time — not in production.
@@ -10,13 +12,29 @@ Node Env Guardian is a VS Code extension for Node.js projects that scans all sou
 
 ### Sidebar: Missing Variables Panel
 
-Open any `.env*` file to see a list of every `process.env` variable referenced in your source code that is **not** defined in that file.
+Open any `.env*` file to see a hierarchical tree of every `process.env` variable referenced in your source code that is **not** defined in that file.
 
-- Flat list sorted alphabetically
-- Each item shows the first usage location (`src/api/client.ts:14`) and a count of additional usages
-- Hover for the full list of all file:line references
+- **Two-level tree** — each missing variable expands to show all source file locations where it's used
+- Click any usage location to jump directly to that line in the source file
 - Persists across editor switches — the last focused `.env*` file stays tracked when you navigate to non-env files
+- The panel title shows the count and tracked file name (e.g. "Missing Variables (10) in .env.local")
 - Refreshes automatically on file save or when you switch editors
+
+### Commented Out Variables Section
+
+Variables that are commented out in your `.env*` file (e.g. `# API_KEY=value`) are shown in a separate **"Commented Out Variables"** section at the bottom of the sidebar, visually separated from truly missing variables. This section can be toggled on/off with the comment button in the toolbar.
+
+### Sidebar Toolbar
+
+The sidebar title bar includes the following buttons (left to right):
+
+| Button | Icon | Description |
+|---|---|---|
+| Refresh | `$(refresh)` | Force-refresh the sidebar tree view |
+| Add All Missing | `$(add)` | Append all missing variables (excluding commented-out) as `VAR=` stubs to the tracked `.env*` file |
+| Toggle Commented | `$(comment)` | Show or hide the "Commented Out Variables" section |
+| Expand All | `$(expand-all)` | Expand all tree nodes to show usage locations |
+| Collapse All | (built-in) | Collapse all expanded tree nodes |
 
 ### Inline Diagnostics (Squiggles)
 
@@ -36,9 +54,12 @@ Right-click a warning squiggle and choose:
 | Command | Description |
 |---|---|
 | `Node Env Guardian: Refresh` | Force-refresh the sidebar tree view |
-| `Copy Variable Name` | Copy the missing variable name to the clipboard |
-| `Add to .env File` | Append `VAR_NAME=` to the currently active `.env*` file |
-| `Go to Usage` | Navigate to the usage in source code (QuickPick if multiple) |
+| `Node Env Guardian: Expand All` | Expand all tree nodes |
+| `Node Env Guardian: Add All Missing Variables to .env` | Bulk-add all missing variables to the tracked `.env*` file |
+| `Node Env Guardian: Toggle Commented Out Variables` | Show/hide the commented-out variables section |
+| `Copy Variable Name` | Copy the missing variable name to the clipboard (context menu) |
+| `Add to .env File` | Append `VAR_NAME=` to the currently active `.env*` file (context menu) |
+| `Go to Usage` | Navigate to the usage in source code — QuickPick if multiple (context menu) |
 
 ---
 
@@ -46,9 +67,9 @@ Right-click a warning squiggle and choose:
 
 **Scanning** — on activation, Node Env Guardian scans all `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`, `.mts`, and `.cts` files for `process.env.*` references using regex matching (not a full AST parser, so it's fast). It skips `node_modules`, `dist`, `build`, `.next`, and `coverage`.
 
-**Env file parsing** — all `.env*` files at the workspace root are parsed for `KEY=` definitions. The value is ignored; presence of the key is all that matters.
+**Env file parsing** — all `.env*` files at the workspace root are parsed for `KEY=` definitions and `# KEY=` commented-out definitions. The value is ignored; presence of the key is all that matters.
 
-**Comparison** — the sidebar and diagnostics compare the set of *used* variables against the set of *defined* variables to find the gap.
+**Comparison** — the sidebar and diagnostics compare the set of *used* variables against the set of *defined* variables to find the gap. Commented-out variables are tracked separately and displayed in their own section.
 
 ---
 

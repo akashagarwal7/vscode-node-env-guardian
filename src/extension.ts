@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ProcessEnvUsageScanner } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { MissingVarsProvider, MissingVarItem, SectionHeaderItem } from './missingVarsProvider';
@@ -59,6 +60,47 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
 
+  // Register add-all-missing command
+  const addAllMissingDisposable = vscode.commands.registerCommand(
+    'envGuardian.addAllMissing',
+    async () => {
+      const filePath = missingVarsProvider!.getActiveEnvFilePath();
+      if (!filePath) {
+        vscode.window.showWarningMessage('Node Env Guardian: No .env file is currently tracked.');
+        return;
+      }
+
+      // Get only the truly missing var names (exclude commented-out)
+      const roots = missingVarsProvider!.getChildren();
+      const missingNames = roots
+        .filter((i): i is MissingVarItem => i instanceof MissingVarItem)
+        .map(i => i.variableName);
+
+      if (missingNames.length === 0) {
+        vscode.window.showInformationMessage('No missing variables to add.');
+        return;
+      }
+
+      const uri = vscode.Uri.file(filePath);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const text = doc.getText();
+      const prefix = text.length > 0 && !text.endsWith('\n') ? '\n' : '';
+      const insertion = prefix + missingNames.map(v => `${v}=`).join('\n') + '\n';
+
+      const edit = new vscode.WorkspaceEdit();
+      const lastLine = doc.lineAt(doc.lineCount - 1);
+      edit.insert(uri, lastLine.range.end, insertion);
+
+      const success = await vscode.workspace.applyEdit(edit);
+      if (success) {
+        await doc.save();
+        vscode.window.showInformationMessage(
+          `Added ${missingNames.length} variable${missingNames.length !== 1 ? 's' : ''} to ${path.basename(filePath)}.`
+        );
+      }
+    }
+  );
+
   // Register toggle-commented-section command
   const toggleCommentedDisposable = vscode.commands.registerCommand(
     'envGuardian.toggleCommentedSection',
@@ -108,6 +150,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     diagnosticsProvider,
     treeView,
     expandAllDisposable,
+    addAllMissingDisposable,
     toggleCommentedDisposable,
     codeActionDisposable,
     ...commandDisposables

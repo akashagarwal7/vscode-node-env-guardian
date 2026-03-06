@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
@@ -62,6 +62,11 @@
         "icon": "$(expand-all)"
       },
       {
+        "command": "envGuardian.addAllMissing",
+        "title": "Node Env Guardian: Add All Missing Variables to .env",
+        "icon": "$(add)"
+      },
+      {
         "command": "envGuardian.toggleCommentedSection",
         "title": "Node Env Guardian: Toggle Commented Out Variables",
         "icon": "$(comment)"
@@ -87,14 +92,19 @@
           "group": "navigation@1"
         },
         {
-          "command": "envGuardian.toggleCommentedSection",
+          "command": "envGuardian.addAllMissing",
           "when": "view == envGuardian.missingVars",
           "group": "navigation@2"
         },
         {
-          "command": "envGuardian.expandAll",
+          "command": "envGuardian.toggleCommentedSection",
           "when": "view == envGuardian.missingVars",
           "group": "navigation@3"
+        },
+        {
+          "command": "envGuardian.expandAll",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [

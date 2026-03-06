@@ -256,14 +256,16 @@ export class MissingVarsProvider
    * to the last focused env file.
    */
   getActiveEnvFileName(): string | undefined {
+    const filePath = this.getActiveEnvFilePath();
+    return filePath ? path.basename(filePath) : undefined;
+  }
+
+  getActiveEnvFilePath(): string | undefined {
     const activeEditor = vscode.window.activeTextEditor;
     if (activeEditor && isEnvFile(activeEditor.document.uri)) {
-      return path.basename(activeEditor.document.uri.fsPath);
+      return activeEditor.document.uri.fsPath;
     }
-    if (this.lastEnvFilePath) {
-      return path.basename(this.lastEnvFilePath);
-    }
-    return undefined;
+    return this.lastEnvFilePath;
   }
 
   dispose(): void {
