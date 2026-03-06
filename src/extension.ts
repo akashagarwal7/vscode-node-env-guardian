@@ -91,9 +91,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       // Get only the truly missing var names (exclude commented-out)
       const roots = missingVarsProvider!.getChildren();
-      const missingNames = roots
-        .filter((i): i is MissingVarItem => i instanceof MissingVarItem)
-        .map(i => i.variableName);
+      const missingSection = roots.find(
+        (i): i is SectionHeaderItem => i instanceof SectionHeaderItem && i.sectionId === 'missing'
+      );
+      const missingNames = missingSection
+        ? missingSection.items.map(i => i.variableName)
+        : [];
 
       if (missingNames.length === 0) {
         vscode.window.showInformationMessage('No missing variables to add.');

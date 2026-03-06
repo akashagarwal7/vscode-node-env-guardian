@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
@@ -64,7 +64,7 @@
       },
       {
         "command": "envGuardian.addAllMissing",
-        "title": "Node Env Guardian: Add All Missing Variables to .env",
+        "title": "Node Env Guardian: Add All Missing Variables to current .env file",
         "icon": "$(add)"
       },
       {
@@ -92,7 +92,7 @@
       },
       {
         "command": "envGuardian.addToEnvFile",
-        "title": "Add to .env File"
+        "title": "Add to current .env file"
       },
       {
         "command": "envGuardian.goToUsage",
