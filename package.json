@@ -1,0 +1,149 @@
+{
+  "name": "envguardian",
+  "displayName": "EnvGuardian",
+  "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Akash Agarwal",
+    "email": "agarwal.akash333@gmail.com"
+  },
+  "publisher": "envguardian",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/akashagarwal7/vscode-env-guardian.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "keywords": [
+    "env",
+    "environment",
+    "dotenv",
+    "process.env",
+    "missing variables"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/package.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "envGuardian",
+          "title": "EnvGuardian",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "envGuardian": [
+        {
+          "id": "envGuardian.missingVars",
+          "name": "Missing Variables"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "envGuardian.refresh",
+        "title": "EnvGuardian: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "envGuardian.copyVarName",
+        "title": "Copy Variable Name"
+      },
+      {
+        "command": "envGuardian.addToEnvFile",
+        "title": "Add to .env File"
+      },
+      {
+        "command": "envGuardian.goToUsage",
+        "title": "Go to Usage"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "envGuardian.refresh",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "envGuardian.copyVarName",
+          "when": "viewItem == missingEnvVar"
+        },
+        {
+          "command": "envGuardian.addToEnvFile",
+          "when": "viewItem == missingEnvVar"
+        },
+        {
+          "command": "envGuardian.goToUsage",
+          "when": "viewItem == missingEnvVar"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "EnvGuardian",
+      "properties": {
+        "envGuardian.sourceGlobs": {
+          "type": "array",
+          "default": [
+            "**/*.{js,ts,jsx,tsx,mjs,cjs,mts,cts}"
+          ],
+          "description": "Glob patterns for source files to scan for process.env usage."
+        },
+        "envGuardian.excludeGlobs": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.next/**",
+            "**/coverage/**"
+          ],
+          "description": "Glob patterns to exclude from scanning."
+        },
+        "envGuardian.envFilePattern": {
+          "type": "string",
+          "default": ".env*",
+          "description": "Glob pattern for environment files at workspace root."
+        },
+        "envGuardian.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline warning squiggles on process.env references in source files."
+        },
+        "envGuardian.diagnostics.partialWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Info-level diagnostics when a variable is defined in some but not all .env files."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && tsc -p test/",
+    "test": "node ./out/test/runTest.js",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.8",
+    "mocha": "^10.3.0",
+    "typescript": "^5.3.3"
+  }
+}
