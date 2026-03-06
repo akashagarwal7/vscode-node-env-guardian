@@ -24,6 +24,7 @@ jobs:
 
       - run: npm ci
       - run: npm run compile
+      - run: npx tsc -p test/
       - run: npm run test:coverage
 
       - name: Upload coverage to Codecov
