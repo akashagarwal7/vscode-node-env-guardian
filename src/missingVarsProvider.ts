@@ -4,7 +4,7 @@ import { ProcessEnvUsageScanner, EnvUsage } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { isEnvFile, formatUsageLocation } from './utils';
 
-export type TreeNode = MissingVarItem | UsageLocationItem | SectionHeaderItem | SeparatorItem;
+export type TreeNode = MissingVarItem | DefinedVarItem | UsageLocationItem | SectionHeaderItem | SeparatorItem;
 
 /**
  * A visual separator in the tree view.
@@ -24,11 +24,12 @@ export class SectionHeaderItem extends vscode.TreeItem {
   constructor(
     public readonly sectionId: string,
     label: string,
-    public readonly items: MissingVarItem[]
+    public readonly items: (MissingVarItem | DefinedVarItem)[],
+    icon: string = 'comment'
   ) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = 'sectionHeader';
-    this.iconPath = new vscode.ThemeIcon('comment');
+    this.iconPath = new vscode.ThemeIcon(icon);
     this.description = `${items.length}`;
   }
 }
@@ -51,6 +52,31 @@ export class MissingVarItem extends vscode.TreeItem {
 
     this.contextValue = 'missingEnvVar';
     this.iconPath = new vscode.ThemeIcon('warning');
+    this.description = `${usages.length} usage${usages.length !== 1 ? 's' : ''}`;
+    this.tooltip = usages.length > 0
+      ? usages.map(u => formatUsageLocation(u.filePath, u.line, workspaceRoot)).join('\n')
+      : variableName;
+  }
+}
+
+/**
+ * A tree item representing a defined environment variable (no warning icon).
+ */
+export class DefinedVarItem extends vscode.TreeItem {
+  constructor(
+    public readonly variableName: string,
+    public readonly usages: EnvUsage[],
+    workspaceRoot?: string
+  ) {
+    super(
+      variableName,
+      usages.length > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None
+    );
+
+    this.contextValue = 'definedEnvVar';
+    this.iconPath = new vscode.ThemeIcon('check');
     this.description = `${usages.length} usage${usages.length !== 1 ? 's' : ''}`;
     this.tooltip = usages.length > 0
       ? usages.map(u => formatUsageLocation(u.filePath, u.line, workspaceRoot)).join('\n')
@@ -161,7 +187,7 @@ export class MissingVarsProvider
     if (element instanceof UsageLocationItem) {
       const roots = this.getChildren();
       for (const r of roots) {
-        if (r instanceof MissingVarItem && r.usages.includes(element.usage)) {
+        if ((r instanceof MissingVarItem || r instanceof DefinedVarItem) && r.usages.includes(element.usage)) {
           return r;
         }
         if (r instanceof SectionHeaderItem) {
@@ -172,11 +198,10 @@ export class MissingVarsProvider
         }
       }
     }
-    if (element instanceof MissingVarItem) {
-      // Check if this item belongs to a section
+    if (element instanceof MissingVarItem || element instanceof DefinedVarItem) {
       const roots = this.getChildren();
       for (const r of roots) {
-        if (r instanceof SectionHeaderItem && r.items.includes(element)) {
+        if (r instanceof SectionHeaderItem && (r.items as TreeNode[]).includes(element)) {
           return r;
         }
       }
@@ -185,8 +210,8 @@ export class MissingVarsProvider
   }
 
   getChildren(element?: TreeNode): TreeNode[] {
-    // Child level: return usage locations for a MissingVarItem
-    if (element instanceof MissingVarItem) {
+    // Child level: return usage locations for a MissingVarItem or DefinedVarItem
+    if (element instanceof MissingVarItem || element instanceof DefinedVarItem) {
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       return element.usages.map(u => new UsageLocationItem(u, workspaceRoot));
     }
@@ -245,6 +270,22 @@ export class MissingVarsProvider
         }
         result.push(new SectionHeaderItem('commented', 'Commented Out Variables', commentedItems));
       }
+    }
+
+    // Defined variables section: vars that are used in code and defined in the env file
+    const definedUsed = allUsedVarNames
+      .filter(v => definedVars.has(v))
+      .sort();
+
+    if (definedUsed.length > 0) {
+      const definedItems = definedUsed.map(varName => {
+        const usages = this.scanner.getUsagesForVariable(varName);
+        return new DefinedVarItem(varName, usages, workspaceRoot);
+      });
+      if (result.length > 0) {
+        result.push(new SeparatorItem());
+      }
+      result.push(new SectionHeaderItem('defined', 'Defined Variables', definedItems, 'pass'));
     }
 
     return result;

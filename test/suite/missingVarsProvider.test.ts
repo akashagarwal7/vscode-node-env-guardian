@@ -157,8 +157,9 @@ suite('MissingVarsProvider — last env file persistence', () => {
     const provider = buildProvider(['API_KEY', 'DB_URL'], ['DB_URL'], envPath);
 
     const children = provider.getChildren();
-    assert.strictEqual(children.length, 1);
-    assert.strictEqual((children[0] as MissingVarItem).variableName, 'API_KEY');
+    const missing = children.filter((c): c is MissingVarItem => c instanceof MissingVarItem);
+    assert.strictEqual(missing.length, 1);
+    assert.strictEqual(missing[0].variableName, 'API_KEY');
   });
 
   test('returns empty when no env file has ever been focused', () => {
@@ -174,8 +175,9 @@ suite('MissingVarsProvider — last env file persistence', () => {
     const provider = buildProvider(['API_KEY', 'DB_URL'], ['DB_URL'], envPath);
 
     let children = provider.getChildren();
-    assert.strictEqual(children.length, 1);
-    assert.strictEqual((children[0] as MissingVarItem).variableName, 'API_KEY');
+    let missing = children.filter((c): c is MissingVarItem => c instanceof MissingVarItem);
+    assert.strictEqual(missing.length, 1);
+    assert.strictEqual(missing[0].variableName, 'API_KEY');
 
     // Simulate switching to a non-env file
     (vscode.window as Record<string, unknown>).activeTextEditor = mockEditor(srcPath);
@@ -184,8 +186,9 @@ suite('MissingVarsProvider — last env file persistence', () => {
     }
 
     children = provider.getChildren();
-    assert.strictEqual(children.length, 1);
-    assert.strictEqual((children[0] as MissingVarItem).variableName, 'API_KEY');
+    missing = children.filter((c): c is MissingVarItem => c instanceof MissingVarItem);
+    assert.strictEqual(missing.length, 1);
+    assert.strictEqual(missing[0].variableName, 'API_KEY');
   });
 
   test('getActiveEnvFileName returns basename after switching away', () => {
