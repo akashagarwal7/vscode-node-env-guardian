@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 
 /**
@@ -63,4 +64,49 @@ export function getWorkspaceFolderForFile(filePath: string): vscode.WorkspaceFol
 export function getConfig<T>(key: string, defaultValue: T): T {
   const config = vscode.workspace.getConfiguration('envGuardian');
   return config.get<T>(key, defaultValue);
+}
+
+export const ENVIGNORE_FILENAME = '.node-env-guardian-ignore';
+
+export const DEFAULT_EXCLUDE_GLOBS = [
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/build/**',
+  '**/out/**',
+  '**/.next/**',
+  '**/coverage/**',
+  '**/.git/**',
+];
+
+/**
+ * Read .envignore from the workspace root and return glob patterns.
+ * If the file doesn't exist, returns undefined (caller should fall back to defaults).
+ * Lines starting with # and blank lines are ignored.
+ */
+export function readEnvIgnore(workspaceRoot: string): string[] | undefined {
+  const ignorePath = path.join(workspaceRoot, ENVIGNORE_FILENAME);
+  try {
+    const content = fs.readFileSync(ignorePath, 'utf-8');
+    return content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith('#'));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Returns the effective exclude globs for scanning.
+ * Priority: .envignore file > envGuardian.excludeGlobs setting > hardcoded defaults.
+ */
+export function getExcludeGlobs(): string[] {
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (workspaceRoot) {
+    const fromFile = readEnvIgnore(workspaceRoot);
+    if (fromFile) {
+      return fromFile;
+    }
+  }
+  return getConfig<string[]>('excludeGlobs', DEFAULT_EXCLUDE_GLOBS);
 }

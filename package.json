@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
@@ -83,6 +83,10 @@
         "icon": "$(unlock)"
       },
       {
+        "command": "envGuardian.generateIgnoreFile",
+        "title": "Node Env Guardian: Generate Ignore File"
+      },
+      {
         "command": "envGuardian.copyVarName",
         "title": "Copy Variable Name"
       },
@@ -159,6 +163,7 @@
             "**/node_modules/**",
             "**/dist/**",
             "**/build/**",
+            "**/out/**",
             "**/.next/**",
             "**/coverage/**"
           ],

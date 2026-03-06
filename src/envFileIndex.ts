@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { isEnvFilePath, getConfig } from './utils';
+import { isEnvFilePath, debounce, getConfig } from './utils';
 
 const DEFAULT_ENV_PATTERN = '.env*';
 
@@ -29,12 +29,15 @@ export class EnvFileIndex implements vscode.Disposable {
   // ── Initialisation ──────────────────────────────────────────────────────────
 
   async initialize(): Promise<void> {
-    await this.initialParse();
+    await this.reParse();
     this.setupWatcher();
-    this.setupSaveListener();
+    this.setupDocumentChangeListener();
   }
 
-  private async initialParse(): Promise<void> {
+  async reParse(): Promise<void> {
+    this.index.clear();
+    this.commentedIndex.clear();
+
     const pattern = getConfig<string>('envFilePattern', DEFAULT_ENV_PATTERN);
     const uris = await vscode.workspace.findFiles(pattern);
 
@@ -71,14 +74,23 @@ export class EnvFileIndex implements vscode.Disposable {
     }, null, this.disposables);
   }
 
-  private setupSaveListener(): void {
-    const disposable = vscode.workspace.onDidSaveTextDocument(async doc => {
-      if (isEnvFilePath(doc.uri.fsPath) && this.isAtWorkspaceRoot(doc.uri.fsPath)) {
-        await this.parseFile(doc.uri.fsPath);
-        this._onDidChange.fire();
-      }
-    });
-    this.disposables.push(disposable);
+  private setupDocumentChangeListener(): void {
+    const debouncedParse = debounce((filePath: string, content: string) => {
+      const vars = this.parseContent(content);
+      this.index.set(filePath, vars);
+      const commentedVars = this.parseCommentedContent(content);
+      this.commentedIndex.set(filePath, commentedVars);
+      this._onDidChange.fire();
+    }, 300);
+
+    this.disposables.push(
+      vscode.workspace.onDidChangeTextDocument(e => {
+        const fsPath = e.document.uri.fsPath;
+        if (isEnvFilePath(fsPath) && this.isAtWorkspaceRoot(fsPath)) {
+          debouncedParse(fsPath, e.document.getText());
+        }
+      })
+    );
   }
 
   // ── Parsing ──────────────────────────────────────────────────────────────────

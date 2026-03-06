@@ -7,7 +7,7 @@ import { promisify } from 'util';
 import { MissingVarItem, MissingVarsProvider } from './missingVarsProvider';
 import { ProcessEnvUsageScanner, EnvUsage } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
-import { isEnvFile } from './utils';
+import { isEnvFile, ENVIGNORE_FILENAME, DEFAULT_EXCLUDE_GLOBS } from './utils';
 
 const execFileAsync = promisify(execFile);
 
@@ -24,7 +24,8 @@ export function registerCommands(
 
   // ── envGuardian.refresh ───────────────────────────────────────────────────────
   disposables.push(
-    vscode.commands.registerCommand('envGuardian.refresh', () => {
+    vscode.commands.registerCommand('envGuardian.refresh', async () => {
+      await Promise.all([scanner.rescan(), envIndex.reParse()]);
       provider.refresh();
     })
   );
@@ -187,6 +188,42 @@ export function registerCommands(
           `Decryption failed: ${err.stderr || err.message}`
         );
       }
+    })
+  );
+
+  // ── envGuardian.generateIgnoreFile ───────────────────────────────────────────
+  disposables.push(
+    vscode.commands.registerCommand('envGuardian.generateIgnoreFile', async () => {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workspaceRoot) {
+        vscode.window.showErrorMessage('Node Env Guardian: No workspace folder found.');
+        return;
+      }
+
+      const ignorePath = path.join(workspaceRoot, ENVIGNORE_FILENAME);
+      if (fs.existsSync(ignorePath)) {
+        const overwrite = await vscode.window.showWarningMessage(
+          `${ENVIGNORE_FILENAME} already exists. Overwrite?`,
+          'Overwrite',
+          'Cancel'
+        );
+        if (overwrite !== 'Overwrite') {
+          return;
+        }
+      }
+
+      const content = [
+        '# Directories to exclude from process.env scanning',
+        '# One glob pattern per line. Lines starting with # are comments.',
+        '',
+        ...DEFAULT_EXCLUDE_GLOBS,
+        '',
+      ].join('\n');
+
+      await fs.promises.writeFile(ignorePath, content, 'utf-8');
+      const doc = await vscode.workspace.openTextDocument(ignorePath);
+      await vscode.window.showTextDocument(doc);
+      vscode.window.showInformationMessage(`Created ${ENVIGNORE_FILENAME}`);
     })
   );
 

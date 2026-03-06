@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { debounce, getConfig } from './utils';
+import { debounce, getConfig, getExcludeGlobs } from './utils';
 
 export interface EnvUsage {
   variableName: string;
@@ -24,14 +24,6 @@ const ENV_USAGE_REGEX =
   /(?<expr>process\.env(?:\.(?<varDot>[A-Za-z_][A-Za-z0-9_]*)|\[\s*['"](?<varBracket>[A-Za-z_][A-Za-z0-9_]*)['"]\s*\]))/g;
 
 const DEFAULT_SOURCE_GLOBS = ['**/*.{js,ts,jsx,tsx,mjs,cjs,mts,cts}'];
-const DEFAULT_EXCLUDE_GLOBS = [
-  '**/node_modules/**',
-  '**/dist/**',
-  '**/build/**',
-  '**/.next/**',
-  '**/coverage/**',
-  '**/.git/**',
-];
 
 /**
  * Scans workspace source files for process.env.* references and
@@ -57,14 +49,16 @@ export class ProcessEnvUsageScanner implements vscode.Disposable {
   // ── Initialisation ──────────────────────────────────────────────────────────
 
   async initialize(): Promise<void> {
-    await this.initialScan();
+    await this.rescan();
     this.setupWatchers();
   }
 
-  private async initialScan(): Promise<void> {
+  async rescan(): Promise<void> {
+    this.usagesByVar.clear();
+    this.usagesByFile.clear();
+
     const sourceGlobs = getConfig<string[]>('sourceGlobs', DEFAULT_SOURCE_GLOBS);
-    const excludeGlobs = getConfig<string[]>('excludeGlobs', DEFAULT_EXCLUDE_GLOBS);
-    const excludePattern = `{${excludeGlobs.join(',')}}`;
+    const excludePattern = `{${getExcludeGlobs().join(',')}}`;
 
     await vscode.window.withProgress(
       {

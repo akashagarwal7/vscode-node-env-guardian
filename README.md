@@ -88,6 +88,7 @@ Right-click a warning squiggle and choose:
 | `Node Env Guardian: Toggle Commented Out Variables` | Show/hide the commented-out variables section |
 | `Node Env Guardian: Encrypt Secrets` | Encrypt the tracked `.env*` file with dotenvx |
 | `Node Env Guardian: Decrypt Secrets` | Decrypt the tracked `.env*` file with dotenvx |
+| `Node Env Guardian: Generate Ignore File` | Create a `.node-env-guardian-ignore` file with default exclude patterns |
 | `Copy Variable Name` | Copy the missing variable name to the clipboard (context menu) |
 | `Add to .env File` | Append `VAR_NAME=` to the currently active `.env*` file (context menu) |
 | `Go to Usage` | Navigate to the usage in source code — QuickPick if multiple (context menu) |
@@ -96,7 +97,9 @@ Right-click a warning squiggle and choose:
 
 ## How It Works
 
-**Scanning** — on activation, Node Env Guardian scans all `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`, `.mts`, and `.cts` files for `process.env.*` references using regex matching (not a full AST parser, so it's fast). It skips `node_modules`, `dist`, `build`, `.next`, and `coverage`.
+**Scanning** — on activation, Node Env Guardian scans all `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`, `.mts`, and `.cts` files for `process.env.*` references using regex matching (not a full AST parser, so it's fast). It skips `node_modules`, `dist`, `build`, `out`, `.next`, and `coverage` by default.
+
+**Custom ignore file** — if a `.node-env-guardian-ignore` file exists at the workspace root, its glob patterns are used *instead of* the default exclude list and the `envGuardian.excludeGlobs` setting. One pattern per line; blank lines and lines starting with `#` are ignored. Run the command `Node Env Guardian: Generate Ignore File` to create one pre-populated with the defaults.
 
 **Env file parsing** — all `.env*` files at the workspace root are parsed for `KEY=` definitions and `# KEY=` commented-out definitions. The value is ignored; presence of the key is all that matters.
 
