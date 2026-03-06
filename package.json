@@ -55,6 +55,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "envGuardian.expandAll",
+        "title": "EnvGuardian: Expand All",
+        "icon": "$(expand-all)"
+      },
+      {
         "command": "envGuardian.copyVarName",
         "title": "Copy Variable Name"
       },
@@ -71,6 +76,11 @@
       "view/title": [
         {
           "command": "envGuardian.refresh",
+          "when": "view == envGuardian.missingVars",
+          "group": "navigation"
+        },
+        {
+          "command": "envGuardian.expandAll",
           "when": "view == envGuardian.missingVars",
           "group": "navigation"
         }

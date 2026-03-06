@@ -4,8 +4,10 @@ import { ProcessEnvUsageScanner, EnvUsage } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
 import { isEnvFile, formatUsageLocation } from './utils';
 
+export type TreeNode = MissingVarItem | UsageLocationItem;
+
 /**
- * A single tree item representing one missing environment variable.
+ * A tree item representing one missing environment variable (parent node).
  */
 export class MissingVarItem extends vscode.TreeItem {
   constructor(
@@ -13,26 +15,47 @@ export class MissingVarItem extends vscode.TreeItem {
     public readonly usages: EnvUsage[],
     workspaceRoot?: string
   ) {
-    super(variableName, vscode.TreeItemCollapsibleState.None);
+    super(
+      variableName,
+      usages.length > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None
+    );
 
     this.contextValue = 'missingEnvVar';
     this.iconPath = new vscode.ThemeIcon('warning');
+    this.description = `${usages.length} usage${usages.length !== 1 ? 's' : ''}`;
+    this.tooltip = usages.length > 0
+      ? usages.map(u => formatUsageLocation(u.filePath, u.line, workspaceRoot)).join('\n')
+      : variableName;
+  }
+}
 
-    // Build description: "src/api/client.ts:14, +2 more"
-    if (usages.length === 0) {
-      this.description = '';
-      this.tooltip = variableName;
-    } else {
-      const first = usages[0];
-      const firstLabel = formatUsageLocation(first.filePath, first.line, workspaceRoot);
-      const extra = usages.length - 1;
-      this.description = extra > 0 ? `${firstLabel}, +${extra} more` : firstLabel;
+/**
+ * A tree item representing a single source usage location (child node).
+ */
+export class UsageLocationItem extends vscode.TreeItem {
+  constructor(
+    public readonly usage: EnvUsage,
+    workspaceRoot?: string
+  ) {
+    const label = formatUsageLocation(usage.filePath, usage.line, workspaceRoot);
+    super(label, vscode.TreeItemCollapsibleState.None);
 
-      // Tooltip: all file:line references, one per line
-      this.tooltip = usages
-        .map(u => formatUsageLocation(u.filePath, u.line, workspaceRoot))
-        .join('\n');
-    }
+    this.contextValue = 'envUsageLocation';
+    this.iconPath = new vscode.ThemeIcon('go-to-file');
+    this.tooltip = usage.filePath + ':' + (usage.line + 1);
+
+    this.command = {
+      command: 'vscode.open',
+      title: 'Go to Usage',
+      arguments: [
+        vscode.Uri.file(usage.filePath),
+        {
+          selection: new vscode.Range(usage.line, usage.column, usage.line, usage.columnEnd),
+        },
+      ],
+    };
   }
 }
 
@@ -40,12 +63,13 @@ export class MissingVarItem extends vscode.TreeItem {
  * TreeDataProvider for the EnvGuardian sidebar view.
  *
  * Displays all process.env variables used in source code that are NOT
- * defined in the currently active .env* file.
+ * defined in the currently active .env* file, with usage locations as
+ * nested children.
  */
 export class MissingVarsProvider
-  implements vscode.TreeDataProvider<MissingVarItem>, vscode.Disposable
+  implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable
 {
-  private _onDidChangeTreeData = new vscode.EventEmitter<MissingVarItem | undefined | void>();
+  private _onDidChangeTreeData = new vscode.EventEmitter<TreeNode | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private disposables: vscode.Disposable[] = [];
@@ -91,11 +115,34 @@ export class MissingVarsProvider
 
   // ── TreeDataProvider ──────────────────────────────────────────────────────────
 
-  getTreeItem(element: MissingVarItem): vscode.TreeItem {
+  getTreeItem(element: TreeNode): vscode.TreeItem {
     return element;
   }
 
-  getChildren(): MissingVarItem[] {
+  getParent(element: TreeNode): TreeNode | undefined {
+    if (element instanceof UsageLocationItem) {
+      // Find the parent MissingVarItem whose usages contain this usage
+      const roots = this.getChildren();
+      return roots.find(
+        r => r instanceof MissingVarItem && r.usages.includes(element.usage)
+      );
+    }
+    return undefined;
+  }
+
+  getChildren(element?: TreeNode): TreeNode[] {
+    // Child level: return usage locations for a MissingVarItem
+    if (element instanceof MissingVarItem) {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      return element.usages.map(u => new UsageLocationItem(u, workspaceRoot));
+    }
+
+    // If called with a UsageLocationItem, no further children
+    if (element) {
+      return [];
+    }
+
+    // Root level: return missing variable items
     const activeEditor = vscode.window.activeTextEditor;
     const activeFilePath =
       activeEditor && isEnvFile(activeEditor.document.uri)
@@ -112,7 +159,6 @@ export class MissingVarsProvider
       .filter(v => !definedVars.has(v))
       .sort();
 
-    // Determine workspace root for display paths
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
     return missingVarNames.map(varName => {

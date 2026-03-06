@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ProcessEnvUsageScanner } from './scanner';
 import { EnvFileIndex } from './envFileIndex';
-import { MissingVarsProvider } from './missingVarsProvider';
+import { MissingVarsProvider, MissingVarItem } from './missingVarsProvider';
 import { EnvDiagnosticsProvider } from './diagnostics';
 import { registerCommands } from './commands';
 
@@ -22,7 +22,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   missingVarsProvider = new MissingVarsProvider(scanner, envIndex);
   const treeView = vscode.window.createTreeView('envGuardian.missingVars', {
     treeDataProvider: missingVarsProvider,
-    showCollapseAll: false,
+    showCollapseAll: true,
   });
 
   // Update the tree view title to show how many missing vars exist
@@ -34,6 +34,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       treeView.title = `Missing Variables (${count})`;
     } else {
       treeView.title = 'Missing Variables';
+    }
+  });
+
+  // Register expand-all command
+  const expandAllDisposable = vscode.commands.registerCommand('envGuardian.expandAll', async () => {
+    const roots = missingVarsProvider!.getChildren();
+    for (const item of roots) {
+      if (item instanceof MissingVarItem) {
+        await treeView.reveal(item, { expand: true });
+      }
     }
   });
 
@@ -70,6 +80,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     missingVarsProvider,
     diagnosticsProvider,
     treeView,
+    expandAllDisposable,
     codeActionDisposable,
     ...commandDisposables
   );
