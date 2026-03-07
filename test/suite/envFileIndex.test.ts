@@ -83,3 +83,108 @@ suite('EnvFileIndex — parseContent', () => {
     assert.ok(vars.has('DB_URL'));
   });
 });
+
+suite('EnvFileIndex — parseCommentedContent', () => {
+  function parseCommented(content: string): Set<string> {
+    const index = new EnvFileIndex();
+    return (index as unknown as { parseCommentedContent(c: string): Set<string> }).parseCommentedContent(content);
+  }
+
+  test('parses commented-out variables', () => {
+    const vars = parseCommented('# API_KEY=secret\n# DB_URL=postgres\n');
+    assert.ok(vars.has('API_KEY'));
+    assert.ok(vars.has('DB_URL'));
+    assert.strictEqual(vars.size, 2);
+  });
+
+  test('ignores non-variable comments', () => {
+    const vars = parseCommented('# This is a comment\n# API_KEY=secret\n');
+    // "This" doesn't match [A-Za-z_][A-Za-z0-9_]* followed by =
+    assert.ok(vars.has('API_KEY'));
+  });
+
+  test('handles comment with extra spaces', () => {
+    const vars = parseCommented('#  API_KEY = value\n');
+    assert.ok(vars.has('API_KEY'));
+  });
+
+  test('empty content returns empty set', () => {
+    const vars = parseCommented('');
+    assert.strictEqual(vars.size, 0);
+  });
+
+  test('active definitions are not included', () => {
+    const vars = parseCommented('API_KEY=value\n# DB_URL=value\n');
+    assert.ok(!vars.has('API_KEY'));
+    assert.ok(vars.has('DB_URL'));
+  });
+});
+
+suite('EnvFileIndex — parseContentWithLines', () => {
+  test('tracks line numbers for variables', () => {
+    const index = new EnvFileIndex();
+    // Access the private method via parseContent (which calls parseContentWithLines)
+    // We need to test getVarLine, so we'll set up via parseFile-like path
+    const parseWithLines = (index as unknown as {
+      parseContentWithLines(c: string): { vars: Set<string>; lines: Map<string, number> };
+    }).parseContentWithLines.bind(index);
+
+    const result = parseWithLines('FOO=bar\n\nBAZ=qux\n');
+    assert.strictEqual(result.lines.get('FOO'), 0);
+    assert.strictEqual(result.lines.get('BAZ'), 2);
+  });
+
+  test('duplicate key keeps first line number', () => {
+    const index = new EnvFileIndex();
+    const parseWithLines = (index as unknown as {
+      parseContentWithLines(c: string): { vars: Set<string>; lines: Map<string, number> };
+    }).parseContentWithLines.bind(index);
+
+    const result = parseWithLines('FOO=first\nFOO=second\n');
+    assert.strictEqual(result.lines.get('FOO'), 0);
+  });
+});
+
+suite('EnvFileIndex — query API', () => {
+  test('getVarsForFile returns empty set for unknown file', () => {
+    const index = new EnvFileIndex();
+    const vars = index.getVarsForFile('/nonexistent/.env');
+    assert.strictEqual(vars.size, 0);
+  });
+
+  test('getCommentedVarsForFile returns empty set for unknown file', () => {
+    const index = new EnvFileIndex();
+    const vars = index.getCommentedVarsForFile('/nonexistent/.env');
+    assert.strictEqual(vars.size, 0);
+  });
+
+  test('getAllFiles returns the internal index map', () => {
+    const index = new EnvFileIndex();
+    const files = index.getAllFiles();
+    assert.ok(files instanceof Map);
+    assert.strictEqual(files.size, 0);
+  });
+
+  test('getFilePaths returns array of file paths', () => {
+    const index = new EnvFileIndex();
+    const paths = index.getFilePaths();
+    assert.ok(Array.isArray(paths));
+    assert.strictEqual(paths.length, 0);
+  });
+
+  test('hasFile returns false for unknown file', () => {
+    const index = new EnvFileIndex();
+    assert.strictEqual(index.hasFile('/nonexistent/.env'), false);
+  });
+
+  test('getVarLine returns undefined for unknown file', () => {
+    const index = new EnvFileIndex();
+    assert.strictEqual(index.getVarLine('/nonexistent/.env', 'FOO'), undefined);
+  });
+
+  test('dispose cleans up resources', () => {
+    const index = new EnvFileIndex();
+    // Should not throw
+    index.dispose();
+  });
+});

@@ -110,4 +110,116 @@ const b = process.env.FOO;
     const usages = parseUsages('/src/no-env.ts', 'const x = 1 + 2;\nconsole.log(x);');
     assert.strictEqual(usages.length, 0);
   });
+
+  test('columnEnd is set correctly', () => {
+    const usages = parseUsages('/src/a.ts', 'process.env.FOO') as Array<{
+      variableName: string;
+      column: number;
+      columnEnd: number;
+    }>;
+    assert.strictEqual(usages.length, 1);
+    assert.strictEqual(usages[0].column, 0);
+    assert.strictEqual(usages[0].columnEnd, 15); // "process.env.FOO".length
+  });
+
+  test('bracket access columnEnd accounts for brackets and quotes', () => {
+    const usages = parseUsages('/src/a.ts', "process.env['FOO']") as Array<{
+      column: number;
+      columnEnd: number;
+    }>;
+    assert.strictEqual(usages[0].column, 0);
+    assert.strictEqual(usages[0].columnEnd, 18);
+  });
+});
+
+suite('ProcessEnvUsageScanner — query API and lifecycle', () => {
+  test('getAllVariableNames returns empty array initially', () => {
+    const scanner = new ProcessEnvUsageScanner();
+    assert.deepStrictEqual(scanner.getAllVariableNames(), []);
+  });
+
+  test('getUsagesForVariable returns empty array for unknown var', () => {
+    const scanner = new ProcessEnvUsageScanner();
+    assert.deepStrictEqual(scanner.getUsagesForVariable('UNKNOWN'), []);
+  });
+
+  test('getUsagesForFile returns empty array for unknown file', () => {
+    const scanner = new ProcessEnvUsageScanner();
+    assert.deepStrictEqual(scanner.getUsagesForFile('/unknown.ts'), []);
+  });
+
+  test('getAllUsages returns empty map initially', () => {
+    const scanner = new ProcessEnvUsageScanner();
+    const all = scanner.getAllUsages();
+    assert.ok(all instanceof Map);
+    assert.strictEqual(all.size, 0);
+  });
+
+  test('scanFile populates both maps', async () => {
+    const scanner = new ProcessEnvUsageScanner();
+    // Mock vscode.workspace.fs.readFile to return content
+    const vscode = require('vscode');
+    const originalReadFile = vscode.workspace.fs.readFile;
+    vscode.workspace.fs.readFile = async () => Buffer.from('const x = process.env.API_KEY;\nconst y = process.env.DB_URL;');
+
+    await scanner.scanFile('/src/app.ts');
+
+    vscode.workspace.fs.readFile = originalReadFile;
+
+    assert.ok(scanner.getAllVariableNames().includes('API_KEY'));
+    assert.ok(scanner.getAllVariableNames().includes('DB_URL'));
+    assert.strictEqual(scanner.getUsagesForFile('/src/app.ts').length, 2);
+    assert.strictEqual(scanner.getUsagesForVariable('API_KEY').length, 1);
+  });
+
+  test('scanFile clears previous entries for the same file', async () => {
+    const scanner = new ProcessEnvUsageScanner();
+    const vscode = require('vscode');
+    const originalReadFile = vscode.workspace.fs.readFile;
+
+    // First scan
+    vscode.workspace.fs.readFile = async () => Buffer.from('process.env.FOO');
+    await scanner.scanFile('/src/app.ts');
+    assert.strictEqual(scanner.getUsagesForVariable('FOO').length, 1);
+
+    // Second scan with different content
+    vscode.workspace.fs.readFile = async () => Buffer.from('process.env.BAR');
+    await scanner.scanFile('/src/app.ts');
+
+    vscode.workspace.fs.readFile = originalReadFile;
+
+    assert.strictEqual(scanner.getUsagesForVariable('FOO').length, 0);
+    assert.strictEqual(scanner.getUsagesForVariable('BAR').length, 1);
+  });
+
+  test('scanFile handles read errors gracefully', async () => {
+    const scanner = new ProcessEnvUsageScanner();
+    const vscode = require('vscode');
+    const originalReadFile = vscode.workspace.fs.readFile;
+    vscode.workspace.fs.readFile = async () => { throw new Error('File not found'); };
+
+    // Should not throw
+    await scanner.scanFile('/nonexistent.ts');
+
+    vscode.workspace.fs.readFile = originalReadFile;
+    assert.strictEqual(scanner.getAllVariableNames().length, 0);
+  });
+
+  test('scanFile with empty content leaves maps empty', async () => {
+    const scanner = new ProcessEnvUsageScanner();
+    const vscode = require('vscode');
+    const originalReadFile = vscode.workspace.fs.readFile;
+    vscode.workspace.fs.readFile = async () => Buffer.from('const x = 1;');
+
+    await scanner.scanFile('/src/empty.ts');
+
+    vscode.workspace.fs.readFile = originalReadFile;
+    assert.strictEqual(scanner.getUsagesForFile('/src/empty.ts').length, 0);
+  });
+
+  test('dispose cleans up resources', () => {
+    const scanner = new ProcessEnvUsageScanner();
+    // Should not throw
+    scanner.dispose();
+  });
 });
