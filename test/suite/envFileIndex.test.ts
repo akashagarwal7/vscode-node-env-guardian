@@ -60,11 +60,12 @@ suite('EnvFileIndex — parseContent', () => {
     assert.ok(vars.has('_PRIVATE'));
   });
 
-  test('handles mixed case variable names', () => {
+  test('only matches uppercase variable names', () => {
     const vars = parseContent('MyVar=value\nmyVar=value\nMYVAR=value\n');
-    assert.ok(vars.has('MyVar'));
-    assert.ok(vars.has('myVar'));
+    assert.ok(!vars.has('MyVar'));
+    assert.ok(!vars.has('myVar'));
     assert.ok(vars.has('MYVAR'));
+    assert.strictEqual(vars.size, 1);
   });
 
   test('empty file results in empty set', () => {
@@ -99,8 +100,17 @@ suite('EnvFileIndex — parseCommentedContent', () => {
 
   test('ignores non-variable comments', () => {
     const vars = parseCommented('# This is a comment\n# API_KEY=secret\n');
-    // "This" doesn't match [A-Za-z_][A-Za-z0-9_]* followed by =
+    // "This" is not followed by "=", so it doesn't match the variable pattern
     assert.ok(vars.has('API_KEY'));
+    assert.strictEqual(vars.size, 1);
+  });
+
+  test('only matches uppercase commented variable names', () => {
+    const vars = parseCommented('# myVar=value\n# MyVar=value\n# MYVAR=value\n');
+    assert.ok(!vars.has('myVar'));
+    assert.ok(!vars.has('MyVar'));
+    assert.ok(vars.has('MYVAR'));
+    assert.strictEqual(vars.size, 1);
   });
 
   test('handles comment with extra spaces', () => {

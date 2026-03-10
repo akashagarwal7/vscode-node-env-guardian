@@ -18,6 +18,9 @@ export class EnvFileIndex implements vscode.Disposable {
   /** absolute file path → Map of variable name → 0-indexed line number */
   private lineIndex: Map<string, Map<string, number>> = new Map();
 
+  /** absolute file path → Map of commented variable name → 0-indexed line number */
+  private commentedLineIndex: Map<string, Map<string, number>> = new Map();
+
   private watcher: vscode.FileSystemWatcher | undefined;
   private disposables: vscode.Disposable[] = [];
 
@@ -41,6 +44,7 @@ export class EnvFileIndex implements vscode.Disposable {
     this.index.clear();
     this.commentedIndex.clear();
     this.lineIndex.clear();
+    this.commentedLineIndex.clear();
 
     const pattern = getConfig<string>('envFilePattern', DEFAULT_ENV_PATTERN);
     const uris = await vscode.workspace.findFiles(pattern);
@@ -75,6 +79,7 @@ export class EnvFileIndex implements vscode.Disposable {
       this.index.delete(uri.fsPath);
       this.commentedIndex.delete(uri.fsPath);
       this.lineIndex.delete(uri.fsPath);
+      this.commentedLineIndex.delete(uri.fsPath);
       this._onDidChange.fire();
     }, null, this.disposables);
   }
@@ -84,8 +89,9 @@ export class EnvFileIndex implements vscode.Disposable {
       const { vars, lines } = this.parseContentWithLines(content);
       this.index.set(filePath, vars);
       this.lineIndex.set(filePath, lines);
-      const commentedVars = this.parseCommentedContent(content);
+      const { vars: commentedVars, lines: commentedLines } = this.parseCommentedContentWithLines(content);
       this.commentedIndex.set(filePath, commentedVars);
+      this.commentedLineIndex.set(filePath, commentedLines);
       this._onDidChange.fire();
     }, 300);
 
@@ -110,6 +116,7 @@ export class EnvFileIndex implements vscode.Disposable {
       this.index.delete(filePath);
       this.commentedIndex.delete(filePath);
       this.lineIndex.delete(filePath);
+      this.commentedLineIndex.delete(filePath);
       return;
     }
 
@@ -117,8 +124,9 @@ export class EnvFileIndex implements vscode.Disposable {
     this.index.set(filePath, vars);
     this.lineIndex.set(filePath, lines);
 
-    const commentedVars = this.parseCommentedContent(content);
+    const { vars: commentedVars, lines: commentedLines } = this.parseCommentedContentWithLines(content);
     this.commentedIndex.set(filePath, commentedVars);
+    this.commentedLineIndex.set(filePath, commentedLines);
   }
 
   /** Pure parsing — exported for unit tests */
@@ -141,7 +149,7 @@ export class EnvFileIndex implements vscode.Disposable {
       }
 
       // Match: VARIABLE_NAME= or VARIABLE_NAME =
-      const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
+      const match = /^([A-Z_][A-Z0-9_]*)\s*=/.exec(line);
       if (match) {
         vars.add(match[1]);
         if (!lines.has(match[1])) {
@@ -155,18 +163,27 @@ export class EnvFileIndex implements vscode.Disposable {
 
   /** Parse commented-out variable definitions (lines like `# VAR_NAME=...`) */
   parseCommentedContent(content: string): Set<string> {
-    const vars = new Set<string>();
-    const lines = content.split('\n');
+    return this.parseCommentedContentWithLines(content).vars;
+  }
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      const match = /^#\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
+  /** Parse commented-out variables returning both names and their line numbers */
+  private parseCommentedContentWithLines(content: string): { vars: Set<string>; lines: Map<string, number> } {
+    const vars = new Set<string>();
+    const lines = new Map<string, number>();
+    const contentLines = content.split('\n');
+
+    for (let i = 0; i < contentLines.length; i++) {
+      const line = contentLines[i].trim();
+      const match = /^#\s*([A-Z_][A-Z0-9_]*)\s*=/.exec(line);
       if (match) {
         vars.add(match[1]);
+        if (!lines.has(match[1])) {
+          lines.set(match[1], i);
+        }
       }
     }
 
-    return vars;
+    return { vars, lines };
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -217,6 +234,11 @@ export class EnvFileIndex implements vscode.Disposable {
   /** Returns the 0-indexed line number of a variable in the given file, or undefined */
   getVarLine(filePath: string, varName: string): number | undefined {
     return this.lineIndex.get(filePath)?.get(varName);
+  }
+
+  /** Returns the 0-indexed line number of a commented-out variable, or undefined */
+  getCommentedVarLine(filePath: string, varName: string): number | undefined {
+    return this.commentedLineIndex.get(filePath)?.get(varName);
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────

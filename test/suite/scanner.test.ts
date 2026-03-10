@@ -101,6 +101,12 @@ const b = process.env.FOO;
     assert.strictEqual(usages[0].variableName, '_PRIVATE');
   });
 
+  test('lowercase or mixed-case variable names are ignored', () => {
+    const usages = parseUsages('/src/mixed.ts', 'process.env.myVar + process.env.UPPER');
+    assert.strictEqual(usages.length, 1);
+    assert.strictEqual((usages[0] as { variableName: string }).variableName, 'UPPER');
+  });
+
   test('empty file returns no usages', () => {
     const usages = parseUsages('/src/empty.ts', '');
     assert.strictEqual(usages.length, 0);

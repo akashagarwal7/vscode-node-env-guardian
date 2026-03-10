@@ -21,7 +21,7 @@ export interface EnvUsage {
  *   - varBracket: variable name from bracket-access
  */
 const ENV_USAGE_REGEX =
-  /(?<expr>process\.env(?:\.(?<varDot>[A-Za-z_][A-Za-z0-9_]*)|\[\s*['"](?<varBracket>[A-Za-z_][A-Za-z0-9_]*)['"]\s*\]))/g;
+  /(?<expr>process\.env(?:\.(?<varDot>[A-Z_][A-Z0-9_]*)|\[\s*['"](?<varBracket>[A-Z_][A-Z0-9_]*)['"]\s*\]))/g;
 
 const DEFAULT_SOURCE_GLOBS = ['**/*.{js,ts,jsx,tsx,mjs,cjs,mts,cts}'];
 

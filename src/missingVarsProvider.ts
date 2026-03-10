@@ -457,16 +457,18 @@ export class MissingVarsProvider
       result.push(new SectionHeaderItem('defined', 'Defined Variables', definedItems, 'pass'));
     }
 
-    // Unused variables section
+    // Unused variables section (includes both active and commented-out definitions not used in code)
     const allUsedSet = new Set(allUsedVarNames);
-    const unusedVarNames = [...definedVars]
-      .filter(v => !allUsedSet.has(v))
-      .sort();
+    const unusedDefinedVarNames = [...definedVars].filter(v => !allUsedSet.has(v));
+    const unusedCommentedVarNames = [...commentedVars].filter(v => !allUsedSet.has(v) && !definedVars.has(v));
+    const unusedVarNames = [...new Set([...unusedDefinedVarNames, ...unusedCommentedVarNames])].sort();
 
     if (unusedVarNames.length > 0) {
-      const unusedItems = unusedVarNames.map(varName =>
-        new UnusedVarItem(varName, filePath, this.envIndex.getVarLine(filePath, varName))
-      );
+      const unusedItems = unusedVarNames.map(varName => {
+        const line = this.envIndex.getVarLine(filePath, varName)
+          ?? this.envIndex.getCommentedVarLine(filePath, varName);
+        return new UnusedVarItem(varName, filePath, line);
+      });
       result.push(new SectionHeaderItem('unused', 'Unused Variables', unusedItems, 'question'));
     }
 
