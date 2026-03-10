@@ -2,7 +2,7 @@
   "name": "vscode-node-env-guardian",
   "displayName": "Node Env Guardian",
   "description": "Scans source files for process.env.* usages and surfaces missing variables when a .env* file is focused in a Node.js project.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "Akash Agarwal",
     "email": "agarwal.akash333@gmail.com"
